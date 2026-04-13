@@ -124,10 +124,76 @@ app.use((err, req, res, next) => {
 // START SERVER
 // ========================
 
-const server = app.listen(PORT, () => {
-  console.log(`🚀 GymDiet app running on http://localhost:${PORT}`);
-  console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
-});
+async function initializeDatabaseAndStart() {
+  try {
+    console.log('🔄 Verificando banco de dados...');
+    
+    // Check if we need to run migrations
+    try {
+      // Try a simple query to see if tables exist
+      await prisma.user.count();
+      console.log('✅ Banco de dados já foi inicializado');
+    } catch (error) {
+      console.log('📦 Iniciando banco de dados com migrations...');
+      
+      // Try to use prisma db push (better for first-time setup)
+      try {
+        const { execSync } = require('child_process');
+        execSync('npx prisma db push --skip-generate', {
+          stdio: 'inherit',
+          env: process.env,
+        });
+        console.log('✅ Migrations aplicadas com sucesso!');
+        
+        // Run seed to create initial data
+        try {
+          console.log('🌱 Carregando dados iniciais...');
+          execSync('node prisma/seed.js', {
+            stdio: 'inherit',
+            env: process.env,
+          });
+          console.log('✅ Dados iniciais criados!');
+        } catch (seedError) {
+          console.log('ℹ️  Seed já foi executado ou dados já existem');
+        }
+      } catch (pushError) {
+        console.error('❌ Erro ao aplicar migrations:', pushError.message);
+        // Continue anyway - maybe the schema is already there
+      }
+    }
+    
+    // Start the server
+    const server = app.listen(PORT, () => {
+      console.log(`🚀 GymDiet app running on http://localhost:${PORT}`);
+      console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
+    });
+
+    // Graceful shutdown
+    const gracefulShutdown = () => {
+      console.log('Shutting down gracefully...');
+      server.close(async () => {
+        await prisma.$disconnect();
+        process.exit(0);
+      });
+      
+      // Force shutdown after 30 seconds
+      setTimeout(() => {
+        console.error('Could not close connections in time, force shutting down');
+        process.exit(1);
+      }, 30000);
+    };
+
+    process.on('SIGTERM', gracefulShutdown);
+    process.on('SIGINT', gracefulShutdown);
+
+  } catch (error) {
+    console.error('❌ Erro ao inicializar aplicação:', error);
+    process.exit(1);
+  }
+}
+
+// Start the application
+initializeDatabaseAndStart();
 
 // Graceful shutdown
 process.on('SIGINT', async () => {

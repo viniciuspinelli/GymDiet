@@ -27,10 +27,10 @@ services:
       - key: PORT
         value: 3000
 
-    # Build configuration
-    buildCommand: npm install && npx prisma db push --skip-generate && npx prisma generate && node prisma/seed.js
+    # Build configuration (migrations run on app startup now)
+    buildCommand: npm install && npx prisma generate
 
-    # Start command
+    # Start command (will auto-run migrations and seed)
     startCommand: npm run start
 
     # Health endpoint (optional but recommended)
