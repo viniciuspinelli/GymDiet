@@ -28,7 +28,7 @@ services:
         value: 3000
 
     # Build configuration
-    buildCommand: npm install && npx prisma migrate deploy && node prisma/seed.js && npx prisma generate
+    buildCommand: npm install && npx prisma db push --skip-generate && npx prisma generate && node prisma/seed.js
 
     # Start command
     startCommand: npm run start
