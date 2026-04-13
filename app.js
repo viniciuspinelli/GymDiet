@@ -139,7 +139,7 @@ async function initializeDatabaseAndStart() {
       // Try to use prisma db push (better for first-time setup)
       try {
         const { execSync } = require('child_process');
-        execSync('npx prisma db push --skip-generate', {
+        execSync('npx prisma db push --skip-generate --accept-data-loss', {
           stdio: 'inherit',
           env: process.env,
         });
