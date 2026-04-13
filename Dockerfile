@@ -3,7 +3,7 @@ FROM node:20-alpine
 WORKDIR /app
 
 # Install system dependencies for Prisma and OpenSSL
-RUN apk add --no-cache libssl1.1 ca-certificates python3 make g++
+RUN apk add --no-cache openssl ca-certificates python3 make g++
 
 # Copy package files
 COPY package*.json ./
