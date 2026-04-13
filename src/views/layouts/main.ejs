@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= title %> - GymDiet</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#0f172a">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="header-content">
+                <div class="logo">
+                    <h1>💪 GymDiet</h1>
+                </div>
+                <h2 class="page-title"><%= title %></h2>
+                <div class="header-actions">
+                    <% if (user) { %>
+                        <span class="user-welcome">Olá, <%= user.username %></span>
+                        <a href="/auth/logout" class="btn-logout">Logout</a>
+                    <% } %>
+                </div>
+            </div>
+        </header>
+
+        <div class="main-wrapper">
+            <!-- Sidebar Navigation (Desktop) -->
+            <% if (user) { %>
+                <nav class="sidebar-nav">
+                    <ul>
+                        <li><a href="/workouts" class="nav-link <%= title === 'Treinos' ? 'active' : '' %>">🏋️ Treinos</a></li>
+                        <li><a href="/workouts/history" class="nav-link <%= title === 'Histórico de Treinos' ? 'active' : '' %>">📊 Histórico</a></li>
+                        <li><a href="/diet" class="nav-link <%= title === 'Dieta' ? 'active' : '' %>">🥗 Dieta</a></li>
+                        <li><a href="/shopping" class="nav-link <%= title === 'Lista de Compras' ? 'active' : '' %>">🛒 Compras</a></li>
+                    </ul>
+                </nav>
+            <% } %>
+
+            <!-- Main Content -->
+            <main class="main-content">
+                <%- body %>
+            </main>
+        </div>
+
+        <!-- Bottom Navigation (Mobile) -->
+        <% if (user) { %>
+            <nav class="bottom-nav">
+                <a href="/workouts" class="nav-tab <%= title === 'Treinos' ? 'active' : '' %>">
+                    <span>🏋️</span>
+                    <span>Treinos</span>
+                </a>
+                <a href="/diet" class="nav-tab <%= title === 'Dieta' ? 'active' : '' %>">
+                    <span>🥗</span>
+                    <span>Dieta</span>
+                </a>
+                <a href="/shopping" class="nav-tab <%= title === 'Lista de Compras' ? 'active' : '' %>">
+                    <span>🛒</span>
+                    <span>Compras</span>
+                </a>
+                <a href="/workouts/history" class="nav-tab <%= title === 'Histórico de Treinos' ? 'active' : '' %>">
+                    <span>📊</span>
+                    <span>Histórico</span>
+                </a>
+            </nav>
+        <% } %>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast"></div>
+
+    <!-- Modal -->
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <span class="modal-close">&times;</span>
+            <h2 id="modalTitle">Confirmação</h2>
+            <p id="modalMessage"></p>
+            <div class="modal-actions">
+                <button id="modalCancel" class="btn btn-secondary">Cancelar</button>
+                <button id="modalConfirm" class="btn btn-danger">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/utils.js"></script>
+    <script src="/js/workout.js"></script>
+    <script src="/js/shopping.js"></script>
+</body>
+</html>

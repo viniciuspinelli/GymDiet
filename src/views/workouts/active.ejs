@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<%- include('../layouts/main.ejs') %>
+
+<div class="active-workout-page">
+    <!-- Workout Header -->
+    <div class="workout-header">
+        <h1><%= session.workoutPlan.name %></h1>
+        <a href="/workouts" class="btn-back">← Voltar</a>
+    </div>
+
+    <!-- Timer and Progress -->
+    <div class="workout-controls">
+        <div class="timer-display">
+            <h2 id="timerDisplay">00:00</h2>
+            <p>Tempo decorrido</p>
+        </div>
+
+        <div class="progress-bar-container">
+            <div class="progress-label">
+                <span id="progressText">0/<%= totalCount %> exercícios</span>
+            </div>
+            <div class="progress-bar">
+                <div id="progressFill" class="progress-fill" style="width: 0%"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Exercises List -->
+    <div class="exercises-list">
+        <% session.sessionExercises.forEach((sessionExercise, index) => { %>
+            <div class="exercise-item <%= sessionExercise.isCompleted ? 'completed' : '' %>"
+                 data-exercise-id="<%= sessionExercise.id %>">
+                
+                <div class="exercise-header">
+                    <div class="exercise-number">
+                        <span class="number"><%= index + 1 %></span>
+                    </div>
+                    <div class="exercise-info">
+                        <h3><%= sessionExercise.exercise.name %></h3>
+                        <div class="exercise-meta">
+                            <span class="meta-item">
+                                <strong><%= sessionExercise.exercise.sets %>x<%= sessionExercise.exercise.reps %></strong>
+                            </span>
+                            <% if (sessionExercise.exercise.weight) { %>
+                                <span class="meta-item">
+                                    <strong><%= sessionExercise.exercise.weight %></strong>
+                                </span>
+                            <% } %>
+                            <% if (sessionExercise.exercise.restSeconds) { %>
+                                <span class="meta-item">
+                                    🕐 <%= sessionExercise.exercise.restSeconds %>s descanso
+                                </span>
+                            <% } %>
+                        </div>
+                        <% if (sessionExercise.exercise.notes) { %>
+                            <p class="exercise-notes"><%= sessionExercise.exercise.notes %></p>
+                        <% } %>
+                    </div>
+                    <button class="btn-complete" data-session-id="<%= session.id %>" data-exercise-id="<%= sessionExercise.id %>">
+                        <span class="check-icon">✓</span>
+                        <span class="check-text">Concluído</span>
+                    </button>
+                </div>
+            </div>
+        <% }); %>
+    </div>
+
+    <!-- Complete Workout Button -->
+    <div class="complete-section" style="display: none;" id="completeSection">
+        <button id="completeWorkoutBtn" class="btn btn-success btn-lg">
+            🏁 Finalizar Treino
+        </button>
+    </div>
+</div>
+
+<script>
+    const sessionId = '<%= session.id %>';
+    const totalExercises = <%= totalCount %>;
+    let startTime = new Date();
+
+    // Timer
+    setInterval(() => {
+        const elapsed = Math.floor((new Date() - startTime) / 1000);
+        const minutes = Math.floor(elapsed / 60);
+        const seconds = elapsed % 60;
+        document.getElementById('timerDisplay').textContent = 
+            String(minutes).padStart(2, '0') + ':' + String(seconds).padStart(2, '0');
+    }, 1000);
+
+    // Complete Exercise
+    document.querySelectorAll('.btn-complete').forEach(btn => {
+        btn.addEventListener('click', async function() {
+            const sessionId = this.dataset.sessionId;
+            const exerciseId = this.dataset.exerciseId;
+            const exerciseItem = document.querySelector(`[data-exercise-id="${exerciseId}"]`);
+
+            try {
+                const response = await fetch(`/workouts/session/${sessionId}/exercise/${exerciseId}/complete`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                if (response.ok) {
+                    exerciseItem.classList.add('completed');
+                    this.disabled = true;
+
+                    // Update progress
+                    const completed = document.querySelectorAll('.exercise-item.completed').length;
+                    document.getElementById('progressText').textContent = `${completed}/${totalExercises} exercícios`;
+                    document.getElementById('progressFill').style.width = `${(completed / totalExercises) * 100}%`;
+
+                    // Show complete button if all done
+                    if (completed === totalExercises) {
+                        document.getElementById('completeSection').style.display = 'block';
+                    }
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showToast('Erro ao marcar exercício', 'error');
+            }
+        });
+    });
+
+    // Complete Workout
+    document.getElementById('completeWorkoutBtn')?.addEventListener('click', async () => {
+        const elapsed = Math.floor((new Date() - startTime) / 1000);
+        const durationMin = Math.floor(elapsed / 60);
+
+        try {
+            const response = await fetch(`/workouts/session/${sessionId}/complete`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ durationMin })
+            });
+
+            if (response.ok) {
+                showToast('Treino finalizado com sucesso! 🎉', 'success');
+                setTimeout(() => window.location.href = '/workouts', 1500);
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            showToast('Erro ao finalizar treino', 'error');
+        }
+    });
+</script>
+
+<!DOCTYPE html>

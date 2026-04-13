@@ -1,0 +1,159 @@
+<div class="login-container">
+    <div class="login-box">
+        <div class="login-header">
+            <h1>💪 GymDiet</h1>
+            <p>Seu Assistente de Treinos e Dieta</p>
+        </div>
+
+        <% if (typeof error !== 'undefined' && error) { %>
+            <div class="alert alert-error">
+                <%= error %>
+            </div>
+        <% } %>
+
+        <form method="POST" action="/auth/login" class="login-form">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            
+            <div class="form-group">
+                <label for="username">Usuário:</label>
+                <input 
+                    type="text" 
+                    id="username" 
+                    name="username" 
+                    placeholder="admin" 
+                    required
+                    autofocus
+                >
+            </div>
+
+            <div class="form-group">
+                <label for="password">Senha:</label>
+                <input 
+                    type="password" 
+                    id="password" 
+                    name="password" 
+                    placeholder="••••••••" 
+                    required
+                >
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-block">
+                Entrar
+            </button>
+        </form>
+
+        <div class="login-footer">
+            <p>Credenciais de teste: admin / admin123</p>
+        </div>
+    </div>
+</div>
+
+<style>
+    body {
+        background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        margin: 0;
+        padding: 20px;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    }
+
+    .login-container {
+        width: 100%;
+        max-width: 400px;
+    }
+
+    .login-box {
+        background: rgba(15, 23, 42, 0.95);
+        border: 1px solid rgba(34, 197, 94, 0.1);
+        border-radius: 12px;
+        padding: 40px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        backdrop-filter: blur(10px);
+    }
+
+    .login-header {
+        text-align: center;
+        margin-bottom: 30px;
+    }
+
+    .login-header h1 {
+        font-size: 32px;
+        margin: 0;
+        color: #22c55e;
+    }
+
+    .login-header p {
+        margin: 10px 0 0 0;
+        color: #94a3b8;
+        font-size: 14px;
+    }
+
+    .login-form {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .form-group label {
+        color: #cbd5e1;
+        font-weight: 500;
+        font-size: 14px;
+    }
+
+    .form-group input {
+        padding: 12px;
+        background: rgba(30, 41, 59, 0.5);
+        border: 1px solid rgba(148, 163, 184, 0.2);
+        border-radius: 6px;
+        color: #e2e8f0;
+        font-size: 14px;
+        transition: all 0.3s ease;
+    }
+
+    .form-group input:focus {
+        outline: none;
+        border-color: #22c55e;
+        background: rgba(30, 41, 59, 0.8);
+        box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1);
+    }
+
+    .btn-block {
+        width: 100%;
+        padding: 12px;
+        font-size: 16px;
+        font-weight: 600;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .alert {
+        padding: 12px;
+        border-radius: 6px;
+        margin-bottom: 20px;
+        font-size: 14px;
+    }
+
+    .alert-error {
+        background: rgba(240, 82, 82, 0.1);
+        border: 1px solid rgba(240, 82, 82, 0.3);
+        color: #fca5a5;
+    }
+
+    .login-footer {
+        text-align: center;
+        margin-top: 20px;
+        color: #64748b;
+        font-size: 13px;
+    }
+</style>

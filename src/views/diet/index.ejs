@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<%- include('../layouts/main.ejs') %>
+
+<div class="diet-page">
+    <!-- Plan Selector -->
+    <div class="plan-selector">
+        <label for="planSelect">Plano de Dieta:</label>
+        <select id="planSelect" onchange="switchPlan(this.value)">
+            <% allPlans.forEach(plan => { %>
+                <option value="<%= plan.id %>" <%= plan.id === activePlan?.id ? 'selected' : '' %>>
+                    <%= plan.name %> <%= plan.isActive ? '(Ativo)' : '' %>
+                </option>
+            <% }); %>
+        </select>
+    </div>
+
+    <% if (activePlan) { %>
+        <!-- Daily Totals -->
+        <div class="totals-card">
+            <h2>📊 Resumo do Dia</h2>
+            <div class="totals-grid">
+                <div class="total-item">
+                    <span class="label">Calorias</span>
+                    <span class="value"><%= totals.totalCalories %></span>
+                </div>
+                <div class="total-item">
+                    <span class="label">Proteína</span>
+                    <span class="value"><%= totals.totalProtein.toFixed(1) %>g</span>
+                </div>
+                <div class="total-item">
+                    <span class="label">Carbos</span>
+                    <span class="value"><%= totals.totalCarbs.toFixed(1) %>g</span>
+                </div>
+                <div class="total-item">
+                    <span class="label">Gordura</span>
+                    <span class="value"><%= totals.totalFat.toFixed(1) %>g</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Meals -->
+        <div class="meals-container">
+            <% activePlan.meals.forEach((meal, mealIndex) => { %>
+                <div class="meal-card">
+                    <div class="meal-header">
+                        <div>
+                            <h3><%= meal.name %></h3>
+                            <% if (meal.time) { %>
+                                <span class="meal-time">🕐 <%= meal.time %></span>
+                            <% } %>
+                        </div>
+                        <button class="btn-delete" onclick="deleteMeal(<%= meal.id %>)">✕</button>
+                    </div>
+
+                    <div class="foods-table">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Alimento</th>
+                                    <th>Quantidade</th>
+                                    <th>Cal</th>
+                                    <th>P</th>
+                                    <th>C</th>
+                                    <th>G</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <% meal.foods.forEach(food => { %>
+                                    <tr data-food-id="<%= food.id %>">
+                                        <td>
+                                            <strong><%= food.name %></strong>
+                                            <% if (food.notes) { %>
+                                                <br><small><%= food.notes %></small>
+                                            <% } %>
+                                        </td>
+                                        <td><%= food.quantity %></td>
+                                        <td><%= food.calories || '-' %></td>
+                                        <td><%= food.protein ? food.protein.toFixed(1) : '-' %></td>
+                                        <td><%= food.carbs ? food.carbs.toFixed(1) : '-' %></td>
+                                        <td><%= food.fat ? food.fat.toFixed(1) : '-' %></td>
+                                        <td>
+                                            <button class="btn-delete" onclick="deleteFood(<%= food.id %>)">✕</button>
+                                        </td>
+                                    </tr>
+                                <% }); %>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Add Food Form -->
+                    <form class="add-food-form" onsubmit="addFood(event, <%= meal.id %>)">
+                        <input type="text" placeholder="Nome do alimento" required class="food-input">
+                        <input type="text" placeholder="Quantidade" required class="food-input">
+                        <input type="number" placeholder="Cal" class="food-input">
+                        <button type="submit" class="btn btn-primary">+ Adicionar</button>
+                    </form>
+                </div>
+            <% }); %>
+        </div>
+    <% } else { %>
+        <div class="empty-state">
+            <p>Nenhum plano de dieta criado ainda</p>
+            <button class="btn btn-primary" onclick="createNewPlan()">Criar Plano de Dieta</button>
+        </div>
+    <% } %>
+</div>
+
+<script>
+    function switchPlan(planId) {
+        if (planId) {
+            fetch(`/diet/plans/${planId}/activate`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            }).then(() => location.reload());
+        }
+    }
+
+    function deleteMeal(mealId) {
+        if (confirm('Tem certeza?')) {
+            fetch(`/diet/meals/${mealId}`, {
+                method: 'DELETE'
+            }).then(() => location.reload());
+        }
+    }
+
+    function deleteFood(foodId) {
+        if (confirm('Tem certeza?')) {
+            fetch(`/diet/foods/${foodId}`, {
+                method: 'DELETE'
+            }).then((...args) => {
+                if (args[0].ok) {
+                    document.querySelector(`[data-food-id="${foodId}"]`).remove();
+                }
+            });
+        }
+    }
+
+    function addFood(event, mealId) {
+        event.preventDefault();
+        const form = event.target;
+        const inputs = form.querySelectorAll('.food-input');
+        const data = {
+            mealId,
+            name: inputs[0].value,
+            quantity: inputs[1].value,
+            calories: inputs[2].value || null
+        };
+
+        fetch(`/diet/meals/${mealId}/foods`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        }).then(() => location.reload());
+    }
+
+    function createNewPlan() {
+        const name = prompt('Nome do plano:');
+        if (name) {
+            fetch(`/diet/plans`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name })
+            }).then(() => location.reload());
+        }
+    }
+</script>
+
+<!DOCTYPE html>
