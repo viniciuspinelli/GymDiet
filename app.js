@@ -136,10 +136,10 @@ async function initializeDatabaseAndStart() {
     } catch (error) {
       console.log('📦 Iniciando banco de dados com migrations...');
       
-      // Try to use prisma db push (better for first-time setup)
+      // Try to use prisma migrate deploy (safe - won't drop existing tables)
       try {
         const { execSync } = require('child_process');
-        execSync('npx prisma db push --skip-generate --accept-data-loss', {
+        execSync('npx prisma migrate deploy --skip-generate', {
           stdio: 'inherit',
           env: process.env,
         });
