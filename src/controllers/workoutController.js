@@ -1,5 +1,5 @@
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+// Workout Controller - Using global.db (pg Pool)
+// TODO: Adapt Prisma queries to pg format
 
 /**
  * Get all workout plans

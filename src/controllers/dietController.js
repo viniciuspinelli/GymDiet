@@ -1,5 +1,5 @@
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+// Diet Controller - Using global.db (pg Pool)
+// TODO: Adapt Prisma queries to pg format
 
 /**
  * Get diet page with active meal plan
