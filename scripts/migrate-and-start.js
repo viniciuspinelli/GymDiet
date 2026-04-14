@@ -12,12 +12,26 @@ async function main() {
   try {
     console.log('🔄 Verificando migrações...');
     
+    // Verify DATABASE_URL is set
+    if (!process.env.DATABASE_URL) {
+      throw new Error('DATABASE_URL environment variable is not set!');
+    }
+    console.log('✅ DATABASE_URL configurada');
+    
     // Run migrations
     console.log('📦 Executando migrations...');
-    execSync('npx prisma migrate deploy --skip-generate', { 
-      stdio: 'inherit',
-      cwd: path.join(__dirname, '..')
-    });
+    try {
+      const output = execSync('npx prisma migrate deploy --skip-generate', { 
+        cwd: path.join(__dirname, '..'),
+        encoding: 'utf-8'
+      });
+      console.log(output);
+    } catch (migrationError) {
+      console.error('❌ Erro durante migrations:');
+      console.error(migrationError.stdout || migrationError.message);
+      console.error(migrationError.stderr || '');
+      throw migrationError;
+    }
     
     console.log('✅ Migrations aplicadas com sucesso!');
     
@@ -25,8 +39,8 @@ async function main() {
     console.log('🌱 Carregando dados iniciais...');
     try {
       execSync('node prisma/seed.js', { 
-        stdio: 'inherit',
-        cwd: path.join(__dirname, '..')
+        cwd: path.join(__dirname, '..'),
+        encoding: 'utf-8'
       });
       console.log('✅ Dados iniciais carregados!');
     } catch (e) {
@@ -41,6 +55,7 @@ async function main() {
     
   } catch (error) {
     console.error('❌ Erro durante startup:', error.message);
+    console.error('Stack:', error.stack);
     process.exit(1);
   }
 }
