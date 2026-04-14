@@ -271,9 +271,12 @@ exports.getHistory = async (req, res, next) => {
       workoutPlan: { name: row.plan_name }
     }));
 
+    const totalSessions = sessions.length;
+
     res.render('workouts/history', {
       title: 'Histórico',
       sessions,
+      totalSessions,
     });
   } catch (error) {
     console.error('Error fetching history:', error);

@@ -104,11 +104,16 @@
 </div>
 
 <script>
+    const csrfToken = '<%= csrfToken %>';
+
     function switchPlan(planId) {
         if (planId) {
             fetch(`/diet/plans/${planId}/activate`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' }
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrfToken
+                }
             }).then(() => location.reload());
         }
     }
@@ -116,7 +121,10 @@
     function deleteMeal(mealId) {
         if (confirm('Tem certeza?')) {
             fetch(`/diet/meals/${mealId}`, {
-                method: 'DELETE'
+                method: 'DELETE',
+                headers: {
+                    'X-CSRF-Token': csrfToken
+                }
             }).then(() => location.reload());
         }
     }
@@ -124,7 +132,10 @@
     function deleteFood(foodId) {
         if (confirm('Tem certeza?')) {
             fetch(`/diet/foods/${foodId}`, {
-                method: 'DELETE'
+                method: 'DELETE',
+                headers: {
+                    'X-CSRF-Token': csrfToken
+                }
             }).then((...args) => {
                 if (args[0].ok) {
                     document.querySelector(`[data-food-id="${foodId}"]`).remove();
@@ -146,7 +157,10 @@
 
         fetch(`/diet/meals/${mealId}/foods`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': csrfToken
+            },
             body: JSON.stringify(data)
         }).then(() => location.reload());
     }
@@ -156,7 +170,10 @@
         if (name) {
             fetch(`/diet/plans`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrfToken
+                },
                 body: JSON.stringify({ name })
             }).then(() => location.reload());
         }

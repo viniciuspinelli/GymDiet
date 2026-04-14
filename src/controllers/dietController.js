@@ -61,6 +61,7 @@ exports.getDiet = async (req, res, next) => {
       activePlan,
       allPlans,
       totals,
+      csrfToken: req.csrfToken(),
     });
   } catch (error) {
     console.error('Error fetching diet:', error);
