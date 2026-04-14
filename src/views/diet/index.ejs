@@ -318,9 +318,10 @@
 
 .form-row {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
     gap: 15px;
     margin-bottom: 15px;
+    width: 100%;
 }
 
 .form-group {
@@ -348,8 +349,10 @@
     padding: 10px;
     border: 2px solid #cbd5e1;
     border-radius: 8px;
-    font-size: 0.95rem;
+    font-size: 1rem;
     font-family: inherit;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .form-group input:focus,
@@ -455,11 +458,14 @@
     border-top: 2px dashed #cbd5e1;
     padding: 20px;
     border-radius: 0 0 12px 12px;
+    display: block !important;
+    overflow-x: auto;
 }
 
 .add-food-form h4 {
     margin-top: 0;
     color: #0f172a;
+    margin-bottom: 15px;
 }
 
 .empty-state {
@@ -541,7 +547,12 @@
     }
 
     .form-row {
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+        gap: 10px;
+    }
+
+    .form-group.flex-2 {
+        grid-column: span 1;
     }
 
     .foods-table {
@@ -551,6 +562,10 @@
     .foods-table th,
     .foods-table td {
         padding: 8px;
+    }
+
+    .add-food-form {
+        padding: 15px;
     }
 }
 </style>
