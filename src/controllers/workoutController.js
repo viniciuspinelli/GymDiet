@@ -271,11 +271,22 @@ exports.getHistory = async (req, res, next) => {
       workoutPlan: { name: row.plan_name }
     }));
 
+    // Group sessions by plan name
+    const sessionsByPlan = {};
+    sessions.forEach(session => {
+      const planName = session.workoutPlan.name;
+      if (!sessionsByPlan[planName]) {
+        sessionsByPlan[planName] = [];
+      }
+      sessionsByPlan[planName].push(session);
+    });
+
     const totalSessions = sessions.length;
 
     res.render('workouts/history', {
       title: 'Histórico',
       sessions,
+      sessionsByPlan,
       totalSessions,
     });
   } catch (error) {

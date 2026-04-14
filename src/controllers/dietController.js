@@ -56,6 +56,14 @@ exports.getDiet = async (req, res, next) => {
       activePlan.meals = meals;
     }
 
+    // Ensure totals are numbers
+    totals = {
+      totalCalories: parseFloat(totals.totalCalories || 0),
+      totalProtein: parseFloat(totals.totalProtein || 0),
+      totalCarbs: parseFloat(totals.totalCarbs || 0),
+      totalFat: parseFloat(totals.totalFat || 0)
+    };
+
     res.render('diet/index', {
       title: 'Dieta',
       activePlan,
