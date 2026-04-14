@@ -11,7 +11,7 @@
             <select id="planSelect" onchange="switchPlan(this.value)">
                 <option value="">Selecione um plano...</option>
                 <% allPlans.forEach(plan => { %>
-                    <option value="<%= plan.id %>" <%= plan.id === activePlan?.id ? 'selected' : '' %>>
+                    <option value="<%= plan.id %>" <%= (activePlan && plan.id === activePlan.id) ? 'selected' : '' %>>
                         <%= plan.name %> <%= plan.isActive ? '(Ativo)' : '' %>
                     </option>
                 <% }); %>
@@ -20,7 +20,7 @@
         </div>
     </div>
 
-    <% if (activePlan) { %>
+    <% if (activePlan && activePlan.id) { %>
         <!-- Daily Totals -->
         <div class="totals-card">
             <h2>📊 Resumo Nutricional</h2>
@@ -557,9 +557,13 @@
 
 <script>
     const csrfToken = '<%= csrfToken %>';
-    const activePlanId = '<%= activePlan?.id || "" %>';
+    const activePlanId = '<%= (activePlan && activePlan.id) ? activePlan.id : "" %>';
 
     function showAddMealForm() {
+        if (!activePlanId) {
+            alert('Por favor, selecione um plano de dieta primeiro!');
+            return;
+        }
         document.getElementById('addMealForm').style.display = 'block';
         document.getElementById('mealName').focus();
     }
@@ -572,6 +576,12 @@
 
     function submitAddMeal(event) {
         event.preventDefault();
+        
+        if (!activePlanId) {
+            alert('Erro: Plano de dieta não selecionado!');
+            return;
+        }
+
         const name = document.getElementById('mealName').value;
         const time = document.getElementById('mealTime').value;
 
@@ -582,11 +592,16 @@
                 'X-CSRF-Token': csrfToken
             },
             body: JSON.stringify({
-                mealPlanId: activePlanId,
+                mealPlanId: parseInt(activePlanId),
                 name,
                 time: time || null
             })
-        }).then(res => res.json()).then(data => {
+        }).then(res => {
+            if (!res.ok) {
+                throw new Error(`Server error: ${res.status}`);
+            }
+            return res.json();
+        }).then(data => {
             if (data.success) {
                 hideAddMealForm();
                 location.reload();
@@ -595,7 +610,7 @@
             }
         }).catch(err => {
             console.error('Erro:', err);
-            alert('Erro ao criar refeição');
+            alert('Erro ao criar refeição: ' + err.message);
         });
     }
 
