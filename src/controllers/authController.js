@@ -1,7 +1,4 @@
 const bcrypt = require('bcrypt');
-const { PrismaClient } = require('@prisma/client');
-
-const prisma = new PrismaClient();
 
 /**
  * Display login page
@@ -30,9 +27,12 @@ exports.postLogin = async (req, res, next) => {
     }
 
     // Find user by username
-    const user = await prisma.user.findUnique({
-      where: { username },
-    });
+    const result = await global.db.query(
+      'SELECT id, username, password FROM "User" WHERE username = $1',
+      [username]
+    );
+
+    const user = result.rows[0];
 
     if (!user) {
       return res.status(401).render('auth/login', {

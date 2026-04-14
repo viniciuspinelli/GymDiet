@@ -2,16 +2,13 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# Install system dependencies for Prisma and OpenSSL
-RUN apk add --no-cache openssl ca-certificates python3 make g++
+# Install system dependencies
+RUN apk add --no-cache openssl ca-certificates
 
 # Copy package files
 COPY package*.json ./
 
-# Copy Prisma schema (before npm install for postinstall script)
-COPY prisma ./prisma
-
-# Install dependencies (ci = clean install for production)
+# Install dependencies (production only)
 RUN npm ci --omit=dev
 
 # Copy source code
@@ -21,7 +18,7 @@ COPY . .
 RUN addgroup -g 1001 -S nodejs && adduser -S nodejs -u 1001
 USER nodejs
 
-# Expose port (Render uses 3000 by default)
+# Expose port
 EXPOSE 3000
 
 # Health check

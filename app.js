@@ -4,8 +4,9 @@ const session = require('express-session');
 const pgSession = require('connect-pg-simple')(session);
 const csrf = require('csurf');
 const morgan = require('morgan');
-const { PrismaClient } = require('@prisma/client');
+const { Pool } = require('pg');
 const path = require('path');
+const bcrypt = require('bcrypt');
 
 const authRoutes = require('./src/routes/auth');
 const workoutRoutes = require('./src/routes/workouts');
@@ -14,8 +15,16 @@ const shoppingRoutes = require('./src/routes/shopping');
 const authMiddleware = require('./src/middleware/authMiddleware');
 
 const app = express();
-const prisma = new PrismaClient();
 const PORT = process.env.PORT || 3000;
+
+// Database Pool
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+});
+
+// Make pool globally available for routes
+global.db = pool;
 
 // ========================
 // MIDDLEWARE
@@ -124,83 +133,162 @@ app.use((err, req, res, next) => {
 // START SERVER
 // ========================
 
-async function initializeDatabaseAndStart() {
+async function initializeDatabase() {
+  const client = await pool.connect();
   try {
-    console.log('🔄 Verificando banco de dados...');
+    console.log('🔄 Inicializando banco de dados...');
     
-    // Check if we need to run migrations
-    try {
-      // Try a simple query to see if tables exist
-      await prisma.user.count();
-      console.log('✅ Banco de dados já foi inicializado');
-    } catch (error) {
-      console.log('📦 Iniciando banco de dados com migrations...');
-      
-      // Try to use prisma migrate deploy (safe - won't drop existing tables)
-      try {
-        const { execSync } = require('child_process');
-        execSync('npx prisma migrate deploy --skip-generate', {
-          stdio: 'inherit',
-          env: process.env,
-        });
-        console.log('✅ Migrations aplicadas com sucesso!');
-        
-        // Run seed to create initial data
-        try {
-          console.log('🌱 Carregando dados iniciais...');
-          execSync('node prisma/seed.js', {
-            stdio: 'inherit',
-            env: process.env,
-          });
-          console.log('✅ Dados iniciais criados!');
-        } catch (seedError) {
-          console.log('ℹ️  Seed já foi executado ou dados já existem');
-        }
-      } catch (pushError) {
-        console.error('❌ Erro ao aplicar migrations:', pushError.message);
-        // Continue anyway - maybe the schema is already there
-      }
-    }
+    // Create tables if they don't exist
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS "User" (
+        id SERIAL PRIMARY KEY,
+        username VARCHAR(255) UNIQUE NOT NULL,
+        password VARCHAR(255) NOT NULL,
+        "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS "WorkoutPlan" (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        description TEXT,
+        "dayOfWeek" VARCHAR(50),
+        "order" INTEGER DEFAULT 0,
+        "isActive" BOOLEAN DEFAULT true,
+        "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS "Exercise" (
+        id SERIAL PRIMARY KEY,
+        "workoutPlanId" INTEGER NOT NULL REFERENCES "WorkoutPlan"(id) ON DELETE CASCADE,
+        name VARCHAR(255) NOT NULL,
+        sets INTEGER NOT NULL,
+        reps VARCHAR(50) NOT NULL,
+        weight VARCHAR(50),
+        "restSeconds" INTEGER,
+        notes TEXT,
+        "order" INTEGER DEFAULT 0
+      );
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS "WorkoutSession" (
+        id SERIAL PRIMARY KEY,
+        "userId" INTEGER NOT NULL REFERENCES "User"(id),
+        "workoutPlanId" INTEGER NOT NULL REFERENCES "WorkoutPlan"(id),
+        "startedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        "completedAt" TIMESTAMP,
+        "isCompleted" BOOLEAN DEFAULT false,
+        "durationMin" INTEGER,
+        notes TEXT
+      );
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS "SessionExercise" (
+        id SERIAL PRIMARY KEY,
+        "workoutSessionId" INTEGER NOT NULL REFERENCES "WorkoutSession"(id) ON DELETE CASCADE,
+        "exerciseId" INTEGER NOT NULL REFERENCES "Exercise"(id),
+        "isCompleted" BOOLEAN DEFAULT false,
+        "completedAt" TIMESTAMP,
+        "actualSets" INTEGER,
+        "actualReps" VARCHAR(50),
+        "actualWeight" VARCHAR(50),
+        notes TEXT
+      );
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS "MealPlan" (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        "isActive" BOOLEAN DEFAULT false,
+        "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS "Meal" (
+        id SERIAL PRIMARY KEY,
+        "mealPlanId" INTEGER NOT NULL REFERENCES "MealPlan"(id) ON DELETE CASCADE,
+        name VARCHAR(255) NOT NULL,
+        time VARCHAR(50),
+        "order" INTEGER DEFAULT 0
+      );
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS "MealFood" (
+        id SERIAL PRIMARY KEY,
+        "mealId" INTEGER NOT NULL REFERENCES "Meal"(id) ON DELETE CASCADE,
+        name VARCHAR(255) NOT NULL,
+        quantity VARCHAR(255) NOT NULL,
+        calories INTEGER,
+        protein DECIMAL(10, 2),
+        carbs DECIMAL(10, 2),
+        fat DECIMAL(10, 2),
+        notes TEXT,
+        "order" INTEGER DEFAULT 0
+      );
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS "ShoppingList" (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(255) DEFAULT 'Lista de Compras',
+        "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS "ShoppingItem" (
+        id SERIAL PRIMARY KEY,
+        "shoppingListId" INTEGER NOT NULL REFERENCES "ShoppingList"(id) ON DELETE CASCADE,
+        name VARCHAR(255) NOT NULL,
+        quantity VARCHAR(255),
+        category VARCHAR(100),
+        "isChecked" BOOLEAN DEFAULT false,
+        notes TEXT,
+        "order" INTEGER DEFAULT 0
+      );
+    `);
+
+    console.log('✅ Tabelas criadas/verificadas com sucesso!');
+  } catch (err) {
+    console.error('❌ Erro ao criar tabelas:', err.message);
+    // Continue anyway - tables might already exist
+  } finally {
+    client.release();
+  }
+}
+
+// Start server
+async function start() {
+  try {
+    await initializeDatabase();
     
-    // Start the server
-    const server = app.listen(PORT, () => {
+    app.listen(PORT, () => {
       console.log(`🚀 GymDiet app running on http://localhost:${PORT}`);
       console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
     });
-
-    // Graceful shutdown
-    const gracefulShutdown = () => {
-      console.log('Shutting down gracefully...');
-      server.close(async () => {
-        await prisma.$disconnect();
-        process.exit(0);
-      });
-      
-      // Force shutdown after 30 seconds
-      setTimeout(() => {
-        console.error('Could not close connections in time, force shutting down');
-        process.exit(1);
-      }, 30000);
-    };
-
-    process.on('SIGTERM', gracefulShutdown);
-    process.on('SIGINT', gracefulShutdown);
-
   } catch (error) {
-    console.error('❌ Erro ao inicializar aplicação:', error);
+    console.error('❌ Erro ao iniciar aplicação:', error);
     process.exit(1);
   }
 }
 
-// Start the application
-initializeDatabaseAndStart();
-
 // Graceful shutdown
-process.on('SIGINT', async () => {
-  console.log('\n⛔ Shutting down gracefully...');
-  server.close();
-  await prisma.$disconnect();
-  process.exit(0);
+process.on('SIGTERM', () => {
+  console.log('\n⛔ Shutting down...');
+  pool.end(() => {
+    console.log('database connection closed');
+    process.exit(0);
+  });
 });
+
+start();
 
 module.exports = app;
