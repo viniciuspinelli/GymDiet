@@ -181,8 +181,8 @@
             });
 
             // Placeholder enhancement
-            if (this.placeholder) {
-                this.style.transition = 'all 150ms ease';
+            if (input.placeholder) {
+                input.style.transition = 'all 150ms ease';
             }
         });
     }
