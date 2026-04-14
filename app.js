@@ -9,6 +9,7 @@ const path = require('path');
 const bcrypt = require('bcrypt');
 
 const authRoutes = require('./src/routes/auth');
+const setupRoutes = require('./src/routes/setup');
 const workoutRoutes = require('./src/routes/workouts');
 const dietRoutes = require('./src/routes/diet');
 const shoppingRoutes = require('./src/routes/shopping');
@@ -78,14 +79,37 @@ app.use((req, res, next) => {
 // ROUTES
 // ========================
 
+// Setup route (must be before auth routes)
+app.use('/setup', setupRoutes);
+
+// Serve setup page
+app.get('/setup', (req, res) => {
+  res.sendFile(path.join(__dirname, 'src', 'public', 'setup.html'));
+});
+
 // Public routes
 app.use('/auth', authRoutes);
 
 // Redirect root to workouts (or login if not authenticated)
-app.get('/', (req, res) => {
-  if (req.session.user) {
-    res.redirect('/workouts');
-  } else {
+app.get('/', async (req, res) => {
+  try {
+    // Check if any users exist
+    const result = await global.db.query('SELECT COUNT(*) FROM "User"');
+    const userCount = parseInt(result.rows[0].count);
+
+    if (userCount === 0) {
+      // No users yet, go to setup
+      return res.redirect('/setup');
+    }
+
+    // Users exist, proceed normally
+    if (req.session.user) {
+      res.redirect('/workouts');
+    } else {
+      res.redirect('/auth/login');
+    }
+  } catch (err) {
+    console.error('Erro ao verificar usuários:', err);
     res.redirect('/auth/login');
   }
 });
