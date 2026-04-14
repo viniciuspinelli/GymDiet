@@ -6,7 +6,7 @@
     <title><%= title %> - GymDiet</title>
     <link rel="stylesheet" href="/css/style.css">
     <link rel="manifest" href="/manifest.json">
-    <meta name="theme-color" content="#0f172a">
+    <meta name="theme-color" content="#FF6B00">
 </head>
 <body>
     <div class="app-container">
@@ -32,7 +32,7 @@
                 <nav class="sidebar-nav">
                     <ul>
                         <li><a href="/workouts" class="nav-link <%= title === 'Treinos' ? 'active' : '' %>">🏋️ Treinos</a></li>
-                        <li><a href="/workouts/plans" class="nav-link <%= title === 'Gerenciar Treinos' ? 'active' : '' %>">⚙️ Gerenciar Treinos</a></li>
+                        <li><a href="/workouts/plans" class="nav-link <%= title === 'Gerenciar Treinos' ? 'active' : '' %>">⚙️ Planos</a></li>
                         <li><a href="/workouts/history" class="nav-link <%= title === 'Histórico de Treinos' ? 'active' : '' %>">📊 Histórico</a></li>
                         <li><a href="/diet" class="nav-link <%= title === 'Dieta' ? 'active' : '' %>">🥗 Dieta</a></li>
                         <li><a href="/shopping" class="nav-link <%= title === 'Lista de Compras' ? 'active' : '' %>">🛒 Compras</a></li>
@@ -86,6 +86,7 @@
     </div>
 
     <script src="/js/utils.js"></script>
+    <script src="/js/theme.js"></script>
     <script src="/js/workout.js"></script>
     <script src="/js/shopping.js"></script>
 </body>
