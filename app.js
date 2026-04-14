@@ -131,6 +131,7 @@ app.use('/shopping', authMiddleware, shoppingRoutes);
 // 404 handler
 app.use((req, res) => {
   res.status(404).render('error', {
+    title: 'Erro 404',
     message: 'Página não encontrada',
     error: { status: 404 },
   });
@@ -158,6 +159,7 @@ app.use((err, req, res, next) => {
 
   // For HTML requests, render error page
   res.status(status).render('error', {
+    title: 'Erro',
     message,
     error: process.env.NODE_ENV === 'development' ? err : {},
   });

@@ -119,6 +119,7 @@ exports.getActiveWorkout = async (req, res, next) => {
 
     if (sessionResult.rows.length === 0 || sessionResult.rows[0].userId !== userId) {
       return res.status(404).render('error', {
+        title: 'Erro',
         message: 'Sessão de treino não encontrada',
       });
     }

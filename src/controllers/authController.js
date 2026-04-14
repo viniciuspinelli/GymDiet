@@ -73,6 +73,7 @@ exports.postLogin = async (req, res, next) => {
       if (err) {
         console.error('Session save error:', err);
         return res.status(500).render('error', {
+          title: 'Erro',
           message: 'Erro ao criar sessão',
         });
       }
