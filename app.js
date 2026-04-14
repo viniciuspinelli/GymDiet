@@ -60,9 +60,8 @@ app.use(
   })
 );
 
-// CSRF protection (except for certain endpoints)
+// CSRF protection setup (but don't apply globally yet)
 const csrfProtection = csrf({ cookie: false });
-app.use(csrfProtection);
 
 // EJS view engine
 app.set('view engine', 'ejs');
@@ -71,7 +70,7 @@ app.set('views', path.join(__dirname, 'src', 'views'));
 // Global response data middleware
 app.use((req, res, next) => {
   res.locals.user = req.session.user || null;
-  res.locals.csrfToken = req.csrfToken();
+  res.locals.csrfToken = req.csrfToken ? req.csrfToken() : '';
   next();
 });
 
@@ -79,7 +78,7 @@ app.use((req, res, next) => {
 // ROUTES
 // ========================
 
-// Setup route (must be before auth routes)
+// Setup route (NO CSRF protection)
 app.use('/setup', setupRoutes);
 
 // Serve setup page
@@ -87,7 +86,10 @@ app.get('/setup', (req, res) => {
   res.sendFile(path.join(__dirname, 'src', 'public', 'setup.html'));
 });
 
-// Public routes
+// Apply CSRF protection from here onwards
+app.use(csrfProtection);
+
+// Public routes (with CSRF)
 app.use('/auth', authRoutes);
 
 // Redirect root to workouts (or login if not authenticated)
