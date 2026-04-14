@@ -579,10 +579,22 @@
 <script>
     const csrfToken = '<%= csrfToken %>';
     const activePlanId = '<%= (activePlan && activePlan.id) ? activePlan.id : "" %>';
+    let isSubmittingMeal = false;
+    let isSubmittingFood = {};
+
+    // 🔧 Get CSRF token with fallbacks
+    function getCsrfToken() {
+        if (typeof csrfToken !== 'undefined' && csrfToken) return csrfToken;
+        const meta = document.querySelector('meta[name="csrf-token"]');
+        if (meta) return meta.getAttribute('content');
+        const input = document.querySelector('input[name="_csrf"]');
+        if (input) return input.value;
+        throw new Error('CSRF token not found');
+    }
 
     function showAddMealForm() {
         if (!activePlanId) {
-            alert('Por favor, selecione um plano de dieta primeiro!');
+            showToast('Por favor, selecione um plano de dieta primeiro! ⚠️', 'error');
             return;
         }
         document.getElementById('addMealForm').style.display = 'block';
@@ -595,145 +607,352 @@
         document.getElementById('mealTime').value = '';
     }
 
+    // 🔧 Submit meal with race condition prevention
     function submitAddMeal(event) {
         event.preventDefault();
         
+        if (isSubmittingMeal) {
+            showToast('Aguarde... sua refeição está sendo criada 🔄', 'warning');
+            return;
+        }
+        
         if (!activePlanId) {
-            alert('Erro: Plano de dieta não selecionado!');
+            showToast('Erro: Plano de dieta não selecionado! ❌', 'error');
             return;
         }
 
-        const name = document.getElementById('mealName').value;
-        const time = document.getElementById('mealTime').value;
+        const name = document.getElementById('mealName').value?.trim();
+        const time = document.getElementById('mealTime').value?.trim();
+        const submitBtn = event.target.querySelector('button[type="submit"]');
 
-        fetch(`/diet/meals`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-Token': csrfToken
-            },
-            body: JSON.stringify({
-                mealPlanId: parseInt(activePlanId),
-                name,
-                time: time || null
+        // 🔧 Validação
+        if (!name || name.length < 2) {
+            showToast('Nome da refeição deve ter pelo menos 2 caracteres ⚠️', 'error');
+            return;
+        }
+
+        if (name.length > 100) {
+            showToast('Nome muito longo (máx 100 caracteres) ⚠️', 'error');
+            return;
+        }
+
+        try {
+            isSubmittingMeal = true;
+            submitBtn.disabled = true;
+
+            fetch(`/diet/meals`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': getCsrfToken()
+                },
+                body: JSON.stringify({
+                    mealPlanId: parseInt(activePlanId),
+                    name,
+                    time: time || null
+                })
             })
-        }).then(res => {
-            if (!res.ok) {
-                throw new Error(`Server error: ${res.status}`);
-            }
-            return res.json();
-        }).then(data => {
-            if (data.success) {
-                hideAddMealForm();
-                location.reload();
-            } else {
-                alert(data.message || 'Erro ao criar refeição');
-            }
-        }).catch(err => {
-            console.error('Erro:', err);
-            alert('Erro ao criar refeição: ' + err.message);
-        });
+            .then(res => {
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                return res.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    showToast('Refeição criada com sucesso! ✓', 'success');
+                    hideAddMealForm();
+                    setTimeout(() => location.reload(), 800);
+                } else {
+                    throw new Error(data.message || 'Erro desconhecido');
+                }
+            })
+            .catch(err => {
+                console.error('Meal error:', err);
+                showToast('Erro: ' + err.message, 'error');
+            })
+            .finally(() => {
+                isSubmittingMeal = false;
+                submitBtn.disabled = false;
+            });
+        } catch (error) {
+            console.error('Fatal error:', error);
+            showToast('Erro ao criar refeição ❌', 'error');
+            isSubmittingMeal = false;
+            submitBtn.disabled = false;
+        }
     }
 
     function switchPlan(planId) {
-        if (planId) {
+        if (!planId) {
+            showToast('Selecione um plano válido ⚠️', 'error');
+            return;
+        }
+
+        try {
             fetch(`/diet/plans/${planId}/activate`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRF-Token': csrfToken
+                    'X-CSRF-Token': getCsrfToken()
                 }
-            }).then(() => location.reload());
+            })
+            .then(res => {
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                return res.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    showToast('Plano ativado ✓', 'success');
+                    setTimeout(() => location.reload(), 500);
+                } else {
+                    throw new Error(data.message || 'Erro desconhecido');
+                }
+            })
+            .catch(err => {
+                console.error('Switch plan error:', err);
+                showToast('Erro: ' + err.message, 'error');
+            });
+        } catch (error) {
+            console.error('Fatal error:', error);
+            showToast('Erro ao ativar plano ❌', 'error');
         }
     }
 
     function deleteMeal(mealId) {
         if (confirm('Deletar essa refeição? Todos os alimentos serão removidos.')) {
-            fetch(`/diet/meals/${mealId}`, {
-                method: 'DELETE',
-                headers: {
-                    'X-CSRF-Token': csrfToken
-                }
-            }).then(() => location.reload());
+            try {
+                fetch(`/diet/meals/${mealId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRF-Token': getCsrfToken()
+                    }
+                })
+                .then(res => {
+                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                    return res.json();
+                })
+                .then(data => {
+                    if (data.success) {
+                        showToast('Refeição removida ✓', 'success');
+                        setTimeout(() => location.reload(), 500);
+                    } else {
+                        throw new Error(data.message || 'Erro desconhecido');
+                    }
+                })
+                .catch(err => {
+                    console.error('Delete meal error:', err);
+                    showToast('Erro: ' + err.message, 'error');
+                });
+            } catch (error) {
+                console.error('Fatal error:', error);
+                showToast('Erro ao remover refeição ❌', 'error');
+            }
         }
     }
 
     function deleteFood(foodId) {
         if (confirm('Deletar esse alimento?')) {
-            fetch(`/diet/foods/${foodId}`, {
-                method: 'DELETE',
-                headers: {
-                    'X-CSRF-Token': csrfToken
-                }
-            }).then(res => {
-                if (res.ok) {
-                    document.querySelector(`[data-food-id="${foodId}"]`).remove();
-                    location.reload();
-                }
-            });
+            try {
+                fetch(`/diet/foods/${foodId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRF-Token': getCsrfToken()
+                    }
+                })
+                .then(res => {
+                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                    return res.json();
+                })
+                .then(data => {
+                    if (data.success) {
+                        document.querySelector(`[data-food-id="${foodId}"]`)?.remove();
+                        showToast('Alimento removido ✓', 'success');
+                        updateMealTotals();
+                    } else {
+                        throw new Error(data.message || 'Erro desconhecido');
+                    }
+                })
+                .catch(err => {
+                    console.error('Delete food error:', err);
+                    showToast('Erro: ' + err.message, 'error');
+                });
+            } catch (error) {
+                console.error('Fatal error:', error);
+                showToast('Erro ao remover alimento ❌', 'error');
+            }
         }
     }
 
+    // 🔧 Add food with validation + race condition prevention
     function addFood(event, mealId) {
         event.preventDefault();
-        const form = event.target;
         
-        const name = form.querySelector('.food-name').value;
-        const quantityValue = form.querySelector('.food-quantity').value;
-        const quantityUnit = form.querySelector('.food-unit').value;
-        const quantity = `${quantityValue}${quantityUnit}`;
-        
-        const data = {
-            mealId,
-            name,
-            quantity,
-            calories: form.querySelector('.food-calories').value || null,
-            protein: form.querySelector('.food-protein').value || null,
-            carbs: form.querySelector('.food-carbs').value || null,
-            fat: form.querySelector('.food-fat').value || null,
-            notes: form.querySelector('.food-notes-input').value || null
-        };
+        if (isSubmittingFood[mealId]) {
+            showToast('Aguarde... alimento está sendo adicionado 🔄', 'warning');
+            return;
+        }
 
-        fetch(`/diet/meals/${mealId}/foods`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-Token': csrfToken
-            },
-            body: JSON.stringify(data)
-        }).then(res => res.json()).then(result => {
-            if (result.success) {
-                form.reset();
-                location.reload();
-            } else {
-                alert(result.message || 'Erro ao adicionar alimento');
+        const form = event.target;
+        const name = form.querySelector('.food-name').value?.trim();
+        const quantityValue = form.querySelector('.food-quantity').value?.trim();
+        const quantityUnit = form.querySelector('.food-unit').value;
+        const quantity = quantityValue ? `${quantityValue}${quantityUnit}` : null;
+        const submitBtn = form.querySelector('button[type="submit"]');
+
+        // 🔧 Validação
+        if (!name || name.length < 2) {
+            showToast('Nome do alimento deve ter pelo menos 2 caracteres ⚠️', 'error');
+            return;
+        }
+
+        if (name.length > 100) {
+            showToast('Nome muito longo (máx 100 caracteres) ⚠️', 'error');
+            return;
+        }
+
+        // Validar se há pelo menos uma propriedade nutricional
+        const calories = form.querySelector('.food-calories').value;
+        const protein = form.querySelector('.food-protein').value;
+        const carbs = form.querySelector('.food-carbs').value;
+        const fat = form.querySelector('.food-fat').value;
+
+        if (!calories && !protein && !carbs && !fat) {
+            showToast('Adicione pelo menos uma informação nutricional ⚠️', 'error');
+            return;
+        }
+
+        // Validar valores numéricos
+        const numFields = { calories, protein, carbs, fat };
+        for (const [field, value] of Object.entries(numFields)) {
+            if (value && isNaN(parseFloat(value))) {
+                showToast(`${field} deve ser um número válido ⚠️`, 'error');
+                return;
             }
-        }).catch(err => {
-            console.error('Erro:', err);
-            alert('Erro ao adicionar alimento');
-        });
+            if (value && parseFloat(value) < 0) {
+                showToast(`${field} não pode ser negativo ⚠️`, 'error');
+                return;
+            }
+        }
+
+        try {
+            isSubmittingFood[mealId] = true;
+            submitBtn.disabled = true;
+
+            const data = {
+                mealId,
+                name,
+                quantity,
+                calories: calories ? parseFloat(calories) : null,
+                protein: protein ? parseFloat(protein) : null,
+                carbs: carbs ? parseFloat(carbs) : null,
+                fat: fat ? parseFloat(fat) : null,
+                notes: form.querySelector('.food-notes-input').value?.trim() || null
+            };
+
+            fetch(`/diet/meals/${mealId}/foods`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': getCsrfToken()
+                },
+                body: JSON.stringify(data)
+            })
+            .then(res => {
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                return res.json();
+            })
+            .then(result => {
+                if (result.success) {
+                    showToast('Alimento adicionado com sucesso! ✓', 'success');
+                    form.reset();
+                    updateMealTotals();
+                    setTimeout(() => location.reload(), 800);
+                } else {
+                    throw new Error(result.message || 'Erro desconhecido');
+                }
+            })
+            .catch(err => {
+                console.error('Add food error:', err);
+                showToast('Erro: ' + err.message, 'error');
+            })
+            .finally(() => {
+                isSubmittingFood[mealId] = false;
+                submitBtn.disabled = false;
+            });
+        } catch (error) {
+            console.error('Fatal error:', error);
+            showToast('Erro ao adicionar alimento ❌', 'error');
+            isSubmittingFood[mealId] = false;
+            submitBtn.disabled = false;
+        }
     }
 
     function createNewPlan() {
         const name = prompt('Nome do novo plano de dieta:');
-        if (name) {
+        if (!name) return;
+
+        const trimmedName = name.trim();
+        if (trimmedName.length < 2) {
+            showToast('Nome do plano deve ter pelo menos 2 caracteres ⚠️', 'error');
+            return;
+        }
+
+        if (trimmedName.length > 100) {
+            showToast('Nome muito longo (máx 100 caracteres) ⚠️', 'error');
+            return;
+        }
+
+        try {
             fetch(`/diet/plans`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRF-Token': csrfToken
+                    'X-CSRF-Token': getCsrfToken()
                 },
-                body: JSON.stringify({ name })
-            }).then(res => res.json()).then(result => {
+                body: JSON.stringify({ name: trimmedName })
+            })
+            .then(res => {
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                return res.json();
+            })
+            .then(result => {
                 if (result.success) {
-                    location.reload();
+                    showToast('Plano criado com sucesso! ✓', 'success');
+                    setTimeout(() => location.reload(), 800);
                 } else {
-                    alert(result.message || 'Erro ao criar plano');
+                    throw new Error(result.message || 'Erro desconhecido');
                 }
-            }).catch(err => {
-                console.error('Erro:', err);
-                alert('Erro ao criar plano');
+            })
+            .catch(err => {
+                console.error('Create plan error:', err);
+                showToast('Erro: ' + err.message, 'error');
             });
+        } catch (error) {
+            console.error('Fatal error:', error);
+            showToast('Erro ao criar plano ❌', 'error');
         }
+    }
+
+    function updateMealTotals() {
+        document.querySelectorAll('.meal-section').forEach(section => {
+            const foods = section.querySelectorAll('.food-item');
+            let totalCals = 0, totalProt = 0, totalCarbs = 0, totalFat = 0;
+
+            foods.forEach(food => {
+                totalCals += parseFloat(food.dataset.calories || 0);
+                totalProt += parseFloat(food.dataset.protein || 0);
+                totalCarbs += parseFloat(food.dataset.carbs || 0);
+                totalFat += parseFloat(food.dataset.fat || 0);
+            });
+
+            const totalsEl = section.querySelector('.meal-totals');
+            if (totalsEl) {
+                totalsEl.innerHTML = `
+                    <div class="nutrient">🔥 ${totalCals.toFixed(1)} kcal</div>
+                    <div class="nutrient">💪 ${totalProt.toFixed(1)}g</div>
+                    <div class="nutrient">🍞 ${totalCarbs.toFixed(1)}g</div>
+                    <div class="nutrient">🧈 ${totalFat.toFixed(1)}g</div>
+                `;
+            }
+        });
     }
 </script>

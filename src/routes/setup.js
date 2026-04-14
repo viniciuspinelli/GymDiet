@@ -22,6 +22,17 @@ router.get('/admin-existe', async (req, res) => {
  */
 router.post('/setup-admin', async (req, res) => {
   try {
+    // 🔒 Verificar se admin já foi criado - prevenir readmissão
+    const existingResult = await global.db.query('SELECT COUNT(*) FROM "User"');
+    const userCount = parseInt(existingResult.rows[0].count);
+    
+    if (userCount > 0) {
+      return res.status(403).json({
+        sucesso: false,
+        erro: 'Admin já foi criado. Efetue login para continuar.'
+      });
+    }
+    
     const { username, password, confirmPassword } = req.body;
 
     // Validate inputs

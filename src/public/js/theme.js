@@ -128,6 +128,10 @@
         const buttons = document.querySelectorAll('.btn');
         
         buttons.forEach(btn => {
+            // 🔧 Verificar se já foi processado para evitar memory leak
+            if (btn.dataset.themeEnhanced === 'true') return;
+            btn.dataset.themeEnhanced = 'true';
+            
             // Ripple effect
             btn.addEventListener('click', function(e) {
                 // Criar ripple apenas para clicks válidos
@@ -170,6 +174,10 @@
         const inputs = document.querySelectorAll('input[type="text"], input[type="email"], input[type="password"], input[type="number"], textarea, select');
         
         inputs.forEach(input => {
+            // 🔧 Verificar se já foi processado
+            if (input.dataset.themeEnhanced === 'true') return;
+            input.dataset.themeEnhanced = 'true';
+            
             // Focus outline refinement
             input.addEventListener('focus', function() {
                 this.style.outline = 'none';

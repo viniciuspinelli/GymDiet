@@ -4,6 +4,101 @@
  */
 
 /**
+ * Get CSRF token from multiple sources
+ * @returns {string} - CSRF token
+ * @throws {Error} - If token not found
+ */
+function getCsrfToken() {
+    // Método 1: Variável global
+    if (typeof csrfToken !== 'undefined') {
+        return csrfToken;
+    }
+    
+    // Método 2: Meta tag
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    if (meta) {
+        return meta.getAttribute('content');
+    }
+    
+    // Método 3: Input hidden
+    const input = document.querySelector('input[name="_csrf"]');
+    if (input) {
+        return input.value;
+    }
+    
+    throw new Error('CSRF token não encontrado');
+}
+
+/**
+ * Validators object for form validation
+ */
+const validators = {
+    required: (val) => val !== null && val !== undefined && val !== '' && val.toString().trim() !== '',
+    number: (val) => !isNaN(parseFloat(val)),
+    email: (val) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val),
+    minLength: (min) => (val) => val && val.length >= min,
+    maxLength: (max) => (val) => !val || val.length <= max,
+    positive: (val) => parseFloat(val) > 0,
+    matches: (pattern) => (val) => pattern.test(val),
+};
+
+/**
+ * Validate a form field
+ * @param {string} value - Value to validate
+ * @param {array} rules - Array of validation rules
+ * @returns {object} - { isValid: boolean, errors: [] }
+ */
+function validateField(value, rules = []) {
+    const errors = [];
+    
+    for (const rule of rules) {
+        if (typeof rule === 'function') {
+            if (!rule(value)) {
+                errors.push('Validação falhou');
+            }
+        }
+    }
+    
+    return {
+        isValid: errors.length === 0,
+        errors
+    };
+}
+
+/**
+ * Make a fetch request with CSRF token and error handling
+ * @param {string} url - The URL to fetch
+ * @param {object} options - Fetch options
+ * @returns {Promise} - JSON response
+ */
+async function apiCall(url, options = {}) {
+    try {
+        // Adicionar CSRF token automaticamente
+        const csrfToken = getCsrfToken();
+        
+        const response = await fetch(url, {
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': csrfToken,
+                ...options.headers,
+            },
+            ...options,
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+        }
+
+        return response.json();
+    } catch (error) {
+        console.error('API call error:', error);
+        showToast(`Erro: ${error.message}`, 'error');
+        throw error;
+    }
+}
+
+/**
  * Display a toast notification
  * @param {string} message - The message to display
  * @param {string} type - 'success', 'error', or 'warning'
@@ -76,37 +171,10 @@ function formatTime(seconds) {
 }
 
 /**
- * Make a fetch request and handle errors
- * @param {string} url - The URL to fetch
- * @param {object} options - Fetch options
- * @returns {Promise} - Response object
- */
-async function apiCall(url, options = {}) {
-    try {
-        const response = await fetch(url, {
-            headers: {
-                'Content-Type': 'application/json',
-                ...options.headers,
-            },
-            ...options,
-        });
-
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        return response;
-    } catch (error) {
-        console.error('API call error:', error);
-        showToast('Erro na comunicação com servidor', 'error');
-        throw error;
-    }
-}
-
-/**
  * Debounce a function
  * @param {function} func - Function to debounce
  * @param {number} wait - Wait time in milliseconds
+ * @returns {function} - Debounced function
  */
 function debounce(func, wait) {
     let timeout;

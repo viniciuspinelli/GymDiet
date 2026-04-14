@@ -87,9 +87,23 @@ app.use((req, res, next) => {
 // Setup route (NO CSRF protection - skip via error handling)
 app.use('/setup', setupRoutes);
 
-// Serve setup page
-app.get('/setup', (req, res) => {
-  res.sendFile(path.join(__dirname, 'src', 'public', 'setup.html'));
+// Serve setup page - proteção contra readmissão
+app.get('/setup', async (req, res, next) => {
+  try {
+    // Verificar se admin já existe
+    const result = await global.db.query('SELECT COUNT(*) FROM "User"');
+    const userCount = parseInt(result.rows[0].count);
+    
+    // Se usuário já existe, redirecionar para login
+    if (userCount > 0) {
+      return res.redirect('/auth/login');
+    }
+    
+    res.sendFile(path.join(__dirname, 'src', 'public', 'setup.html'));
+  } catch (err) {
+    console.error('Error checking setup:', err);
+    next(err);
+  }
 });
 
 // Public routes (CSRF already applied)

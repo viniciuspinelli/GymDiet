@@ -193,8 +193,70 @@ exports.addFood = async (req, res, next) => {
   try {
     const { mealId, name, quantity, calories, protein, carbs, fat, notes } = req.body;
 
-    if (!name || !quantity) {
-      return res.status(400).json({ success: false, message: 'Nome e quantidade são obrigatórios' });
+    // 🔧 Validação de nome
+    if (!name || typeof name !== 'string' || name.trim().length < 2) {
+      return res.status(400).json({ success: false, message: 'Nome do alimento inválido (mín 2 caracteres)' });
+    }
+
+    if (name.length > 100) {
+      return res.status(400).json({ success: false, message: 'Nome do alimento muito longo (máx 100 caracteres)' });
+    }
+
+    // 🔧 Validação de quantidade (opcional, mas se fornecida deve ser válida)
+    if (quantity && typeof quantity !== 'string') {
+      return res.status(400).json({ success: false, message: 'Quantidade deve ser um texto válido' });
+    }
+
+    // 🔧 Converter e validar valores numéricos
+    let caloriesVal = null;
+    let proteinVal = null;
+    let carbsVal = null;
+    let fatVal = null;
+
+    if (calories !== null && calories !== undefined && calories !== '') {
+      caloriesVal = parseFloat(calories);
+      if (isNaN(caloriesVal) || caloriesVal < 0) {
+        return res.status(400).json({ success: false, message: 'Calorias deve ser um número não-negativo' });
+      }
+      caloriesVal = Math.round(caloriesVal * 100) / 100; // Limit to 2 decimals
+    }
+
+    if (protein !== null && protein !== undefined && protein !== '') {
+      proteinVal = parseFloat(protein);
+      if (isNaN(proteinVal) || proteinVal < 0) {
+        return res.status(400).json({ success: false, message: 'Proteína deve ser um número não-negativo' });
+      }
+      proteinVal = Math.round(proteinVal * 100) / 100;
+    }
+
+    if (carbs !== null && carbs !== undefined && carbs !== '') {
+      carbsVal = parseFloat(carbs);
+      if (isNaN(carbsVal) || carbsVal < 0) {
+        return res.status(400).json({ success: false, message: 'Carboidratos deve ser um número não-negativo' });
+      }
+      carbsVal = Math.round(carbsVal * 100) / 100;
+    }
+
+    if (fat !== null && fat !== undefined && fat !== '') {
+      fatVal = parseFloat(fat);
+      if (isNaN(fatVal) || fatVal < 0) {
+        return res.status(400).json({ success: false, message: 'Gordura deve ser um número não-negativo' });
+      }
+      fatVal = Math.round(fatVal * 100) / 100;
+    }
+
+    // 🔧 Validação: pelo menos uma propriedade nutricional deve estar definida
+    if (caloriesVal === null && proteinVal === null && carbsVal === null && fatVal === null) {
+      return res.status(400).json({ success: false, message: 'Adicione pelo menos uma informação nutricional' });
+    }
+
+    // 🔧 Validação de notes (opcional)
+    let notesVal = null;
+    if (notes && typeof notes === 'string') {
+      notesVal = notes.trim() || null;
+      if (notesVal && notesVal.length > 500) {
+        return res.status(400).json({ success: false, message: 'Notas muito longas (máx 500 caracteres)' });
+      }
     }
 
     const result = await global.db.query(
@@ -203,13 +265,13 @@ exports.addFood = async (req, res, next) => {
        RETURNING *`,
       [
         parseInt(mealId),
-        name,
-        quantity,
-        calories ? parseInt(calories) : null,
-        protein ? parseFloat(protein) : null,
-        carbs ? parseFloat(carbs) : null,
-        fat ? parseFloat(fat) : null,
-        notes || null
+        name.trim(),
+        quantity?.trim() || null,
+        caloriesVal,
+        proteinVal,
+        carbsVal,
+        fatVal,
+        notesVal
       ]
     );
 
