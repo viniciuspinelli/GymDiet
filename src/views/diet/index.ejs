@@ -1,31 +1,40 @@
 <div class="diet-page">
+    <!-- Header -->
+    <div class="page-header">
+        <h1>🍽️ Plano de Dieta</h1>
+    </div>
+
     <!-- Plan Selector -->
-    <div class="plan-selector">
-        <label for="planSelect">Plano de Dieta:</label>
-        <select id="planSelect" onchange="switchPlan(this.value)">
-            <% allPlans.forEach(plan => { %>
-                <option value="<%= plan.id %>" <%= plan.id === activePlan?.id ? 'selected' : '' %>>
-                    <%= plan.name %> <%= plan.isActive ? '(Ativo)' : '' %>
-                </option>
-            <% }); %>
-        </select>
+    <div class="plan-selector-section">
+        <label for="planSelect">Plano Ativo:</label>
+        <div class="selector-row">
+            <select id="planSelect" onchange="switchPlan(this.value)">
+                <option value="">Selecione um plano...</option>
+                <% allPlans.forEach(plan => { %>
+                    <option value="<%= plan.id %>" <%= plan.id === activePlan?.id ? 'selected' : '' %>>
+                        <%= plan.name %> <%= plan.isActive ? '(Ativo)' : '' %>
+                    </option>
+                <% }); %>
+            </select>
+            <button class="btn btn-success" onclick="createNewPlan()">➕ Novo Plano</button>
+        </div>
     </div>
 
     <% if (activePlan) { %>
         <!-- Daily Totals -->
         <div class="totals-card">
-            <h2>📊 Resumo do Dia</h2>
+            <h2>📊 Resumo Nutricional</h2>
             <div class="totals-grid">
                 <div class="total-item">
                     <span class="label">Calorias</span>
-                    <span class="value"><%= totals.totalCalories %></span>
+                    <span class="value"><%= totals.totalCalories %> kcal</span>
                 </div>
                 <div class="total-item">
                     <span class="label">Proteína</span>
                     <span class="value"><%= totals.totalProtein.toFixed(1) %>g</span>
                 </div>
                 <div class="total-item">
-                    <span class="label">Carbos</span>
+                    <span class="label">Carboidratos</span>
                     <span class="value"><%= totals.totalCarbs.toFixed(1) %>g</span>
                 </div>
                 <div class="total-item">
@@ -35,76 +44,560 @@
             </div>
         </div>
 
+        <!-- Add Meal Button -->
+        <div class="add-meal-section">
+            <button class="btn btn-primary btn-lg" onclick="showAddMealForm()">
+                ➕ Adicionar Refeição
+            </button>
+        </div>
+
+        <!-- Add Meal Form (Hidden by default) -->
+        <div class="add-meal-form" id="addMealForm" style="display: none;">
+            <h3>Adicionar Nova Refeição</h3>
+            <form onsubmit="submitAddMeal(event)">
+                <div class="form-row">
+                    <div class="form-group flex-1">
+                        <label>Nome da Refeição *</label>
+                        <input type="text" id="mealName" placeholder="ex: Café da Manhã, Almoço, Lanche..." required>
+                    </div>
+                    <div class="form-group">
+                        <label>Horário</label>
+                        <input type="time" id="mealTime" placeholder="HH:MM">
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-success">✓ Criar Refeição</button>
+                    <button type="button" class="btn btn-secondary" onclick="hideAddMealForm()">✕ Cancelar</button>
+                </div>
+            </form>
+        </div>
+
         <!-- Meals -->
         <div class="meals-container">
-            <% activePlan.meals.forEach((meal, mealIndex) => { %>
-                <div class="meal-card">
-                    <div class="meal-header">
-                        <div>
-                            <h3><%= meal.name %></h3>
-                            <% if (meal.time) { %>
-                                <span class="meal-time">🕐 <%= meal.time %></span>
+            <% if (activePlan.meals && activePlan.meals.length > 0) { %>
+                <% activePlan.meals.forEach((meal, mealIndex) => { %>
+                    <div class="meal-card">
+                        <div class="meal-header">
+                            <div class="meal-title">
+                                <h3><%= meal.name %></h3>
+                                <% if (meal.time) { %>
+                                    <span class="meal-time">🕐 <%= meal.time %></span>
+                                <% } %>
+                            </div>
+                            <button class="btn-delete btn" onclick="deleteMeal(<%= meal.id %>)">🗑️ Deletar</button>
+                        </div>
+
+                        <div class="foods-section">
+                            <% if (meal.foods && meal.foods.length > 0) { %>
+                                <table class="foods-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Alimento</th>
+                                            <th>Quantidade</th>
+                                            <th>Calorias</th>
+                                            <th>Proteína</th>
+                                            <th>Carbos</th>
+                                            <th>Gordura</th>
+                                            <th></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <% meal.foods.forEach(food => { %>
+                                            <tr data-food-id="<%= food.id %>">
+                                                <td>
+                                                    <strong><%= food.name %></strong>
+                                                    <% if (food.notes) { %>
+                                                        <br><small class="food-notes"><%= food.notes %></small>
+                                                    <% } %>
+                                                </td>
+                                                <td class="quantity-cell"><%= food.quantity %></td>
+                                                <td><%= food.calories ? food.calories + ' kcal' : '—' %></td>
+                                                <td><%= food.protein ? food.protein.toFixed(1) + 'g' : '—' %></td>
+                                                <td><%= food.carbs ? food.carbs.toFixed(1) + 'g' : '—' %></td>
+                                                <td><%= food.fat ? food.fat.toFixed(1) + 'g' : '—' %></td>
+                                                <td>
+                                                    <button class="btn-delete btn-sm" onclick="deleteFood(<%= food.id %>)">✕</button>
+                                                </td>
+                                            </tr>
+                                        <% }); %>
+                                    </tbody>
+                                </table>
+                            <% } else { %>
+                                <p class="no-foods">Nenhum alimento adicionado a esta refeição</p>
                             <% } %>
                         </div>
-                        <button class="btn-delete" onclick="deleteMeal(<%= meal.id %>)">✕</button>
-                    </div>
 
-                    <div class="foods-table">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Alimento</th>
-                                    <th>Quantidade</th>
-                                    <th>Cal</th>
-                                    <th>P</th>
-                                    <th>C</th>
-                                    <th>G</th>
-                                    <th></th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <% meal.foods.forEach(food => { %>
-                                    <tr data-food-id="<%= food.id %>">
-                                        <td>
-                                            <strong><%= food.name %></strong>
-                                            <% if (food.notes) { %>
-                                                <br><small><%= food.notes %></small>
-                                            <% } %>
-                                        </td>
-                                        <td><%= food.quantity %></td>
-                                        <td><%= food.calories || '-' %></td>
-                                        <td><%= food.protein ? food.protein.toFixed(1) : '-' %></td>
-                                        <td><%= food.carbs ? food.carbs.toFixed(1) : '-' %></td>
-                                        <td><%= food.fat ? food.fat.toFixed(1) : '-' %></td>
-                                        <td>
-                                            <button class="btn-delete" onclick="deleteFood(<%= food.id %>)">✕</button>
-                                        </td>
-                                    </tr>
-                                <% }); %>
-                            </tbody>
-                        </table>
-                    </div>
+                        <!-- Add Food Form -->
+                        <form class="add-food-form" onsubmit="addFood(event, <%= meal.id %>)">
+                            <h4>Adicionar Alimento</h4>
+                            <div class="form-row">
+                                <div class="form-group flex-2">
+                                    <label>Nome do Alimento *</label>
+                                    <input type="text" placeholder="ex: Frango, Arroz, Brócolis..." required class="food-name">
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label>Quantidade *</label>
+                                    <input type="number" placeholder="100" min="1" step="0.1" required class="food-quantity">
+                                </div>
 
-                    <!-- Add Food Form -->
-                    <form class="add-food-form" onsubmit="addFood(event, <%= meal.id %>)">
-                        <input type="text" placeholder="Nome do alimento" required class="food-input">
-                        <input type="text" placeholder="Quantidade" required class="food-input">
-                        <input type="number" placeholder="Cal" class="food-input">
-                        <button type="submit" class="btn btn-primary">+ Adicionar</button>
-                    </form>
+                                <div class="form-group">
+                                    <label>Unidade *</label>
+                                    <select required class="food-unit">
+                                        <option value="">Selecione...</option>
+                                        <option value="g">Gramas (g)</option>
+                                        <option value="un">Unidades</option>
+                                        <option value="ml">Mililitros (ml)</option>
+                                        <option value="xícara">Xícara</option>
+                                        <option value="colher">Colher de sopa</option>
+                                        <option value="fatia">Fatia</option>
+                                        <option value="prato">Prato</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Calorias</label>
+                                    <input type="number" placeholder="0" min="0" step="0.1" class="food-calories">
+                                </div>
+
+                                <div class="form-group">
+                                    <label>Proteína (g)</label>
+                                    <input type="number" placeholder="0" min="0" step="0.1" class="food-protein">
+                                </div>
+
+                                <div class="form-group">
+                                    <label>Carbos (g)</label>
+                                    <input type="number" placeholder="0" min="0" step="0.1" class="food-carbs">
+                                </div>
+
+                                <div class="form-group">
+                                    <label>Gordura (g)</label>
+                                    <input type="number" placeholder="0" min="0" step="0.1" class="food-fat">
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Notas</label>
+                                <input type="text" placeholder="ex: Cozido sem óleo, com limão..." class="food-notes-input">
+                            </div>
+
+                            <button type="submit" class="btn btn-success">➕ Adicionar Alimento</button>
+                        </form>
+                    </div>
+                <% }); %>
+            <% } else { %>
+                <div class="empty-state">
+                    <p>Nenhuma refeição adicionada ainda ao plano "<%= activePlan.name %>"</p>
+                    <p>Use o botão acima para criar uma nova refeição! 👆</p>
                 </div>
-            <% }); %>
+            <% } %>
         </div>
+
     <% } else { %>
         <div class="empty-state">
-            <p>Nenhum plano de dieta criado ainda</p>
-            <button class="btn btn-primary" onclick="createNewPlan()">Criar Plano de Dieta</button>
+            <p>Nenhum plano de dieta selecionado</p>
+            <button class="btn btn-primary btn-lg" onclick="createNewPlan()">Criar Plano de Dieta</button>
         </div>
     <% } %>
 </div>
 
+<style>
+.diet-page {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.page-header {
+    margin-bottom: 30px;
+    text-align: center;
+}
+
+.page-header h1 {
+    font-size: 2rem;
+    color: #0f172a;
+    margin: 0;
+}
+
+.plan-selector-section {
+    background: #f0f4f8;
+    padding: 20px;
+    border-radius: 10px;
+    margin-bottom: 30px;
+}
+
+.plan-selector-section label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 10px;
+    color: #0f172a;
+}
+
+.selector-row {
+    display: flex;
+    gap: 10px;
+}
+
+.selector-row select {
+    flex: 1;
+    padding: 10px;
+    border: 2px solid #cbd5e1;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-family: inherit;
+}
+
+.selector-row select:focus {
+    outline: none;
+    border-color: #667eea;
+}
+
+.totals-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 12px;
+    padding: 25px;
+    margin-bottom: 30px;
+}
+
+.totals-card h2 {
+    margin-top: 0;
+    font-size: 1.3rem;
+}
+
+.totals-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 15px;
+}
+
+.total-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.15);
+    padding: 15px;
+    border-radius: 8px;
+}
+
+.total-item .label {
+    font-size: 0.9rem;
+    opacity: 0.9;
+    margin-bottom: 5px;
+}
+
+.total-item .value {
+    font-size: 1.8rem;
+    font-weight: 700;
+}
+
+.add-meal-section {
+    margin-bottom: 25px;
+    text-align: center;
+}
+
+.add-meal-section .btn-lg {
+    padding: 12px 24px;
+    font-size: 1rem;
+}
+
+.add-meal-form {
+    background: #f9fafb;
+    border: 2px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 25px;
+}
+
+.add-meal-form h3 {
+    margin-top: 0;
+    color: #0f172a;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-group.flex-1 {
+    grid-column: span 1;
+}
+
+.form-group.flex-2 {
+    grid-column: span 2;
+}
+
+.form-group label {
+    font-weight: 600;
+    margin-bottom: 5px;
+    color: #1e293b;
+    font-size: 0.9rem;
+}
+
+.form-group input,
+.form-group select {
+    padding: 10px;
+    border: 2px solid #cbd5e1;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-family: inherit;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.form-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.meals-container {
+    display: grid;
+    gap: 20px;
+}
+
+.meal-card {
+    background: white;
+    border: 2px solid #e2e8f0;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.meal-header {
+    background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
+    padding: 15px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.meal-title h3 {
+    margin: 0 0 5px 0;
+    color: #0f172a;
+    font-size: 1.3rem;
+}
+
+.meal-time {
+    display: inline-block;
+    background: white;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    color: #64748b;
+}
+
+.foods-section {
+    padding: 15px 20px;
+}
+
+.foods-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 15px;
+}
+
+.foods-table thead {
+    background: #f1f5f9;
+}
+
+.foods-table th {
+    padding: 10px;
+    text-align: left;
+    font-weight: 600;
+    color: #475569;
+    font-size: 0.9rem;
+    border-bottom: 2px solid #cbd5e1;
+}
+
+.foods-table td {
+    padding: 12px 10px;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.foods-table tbody tr:hover {
+    background: #f9fafb;
+}
+
+.quantity-cell {
+    font-weight: 600;
+    color: #667eea;
+}
+
+.food-notes {
+    color: #94a3b8;
+}
+
+.no-foods {
+    color: #94a3b8;
+    text-align: center;
+    padding: 20px;
+    font-style: italic;
+}
+
+.add-food-form {
+    background: #f9fafb;
+    border-top: 2px dashed #cbd5e1;
+    padding: 20px;
+    border-radius: 0 0 12px 12px;
+}
+
+.add-food-form h4 {
+    margin-top: 0;
+    color: #0f172a;
+}
+
+.empty-state {
+    background: #f0f4f8;
+    border-radius: 10px;
+    padding: 40px;
+    text-align: center;
+    color: #64748b;
+}
+
+.empty-state p {
+    margin: 10px 0;
+    font-size: 1rem;
+}
+
+.btn {
+    padding: 10px 16px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.3s;
+    font-size: 0.95rem;
+    font-family: inherit;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.btn-success {
+    background: #10b981;
+    color: white;
+}
+
+.btn-success:hover {
+    background: #059669;
+}
+
+.btn-secondary {
+    background: #cbd5e1;
+    color: #1e293b;
+}
+
+.btn-secondary:hover {
+    background: #94a3b8;
+}
+
+.btn-lg {
+    padding: 12px 24px;
+    font-size: 1rem;
+}
+
+.btn-sm {
+    padding: 6px 12px;
+    font-size: 0.85rem;
+}
+
+.btn-delete {
+    background: #ef4444;
+    color: white;
+    font-size: 0.85rem;
+}
+
+.btn-delete:hover {
+    background: #dc2626;
+}
+
+@media (max-width: 768px) {
+    .meal-header {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+
+    .foods-table {
+        font-size: 0.85rem;
+    }
+
+    .foods-table th,
+    .foods-table td {
+        padding: 8px;
+    }
+}
+</style>
+
 <script>
     const csrfToken = '<%= csrfToken %>';
+    const activePlanId = '<%= activePlan?.id || "" %>';
+
+    function showAddMealForm() {
+        document.getElementById('addMealForm').style.display = 'block';
+        document.getElementById('mealName').focus();
+    }
+
+    function hideAddMealForm() {
+        document.getElementById('addMealForm').style.display = 'none';
+        document.getElementById('mealName').value = '';
+        document.getElementById('mealTime').value = '';
+    }
+
+    function submitAddMeal(event) {
+        event.preventDefault();
+        const name = document.getElementById('mealName').value;
+        const time = document.getElementById('mealTime').value;
+
+        fetch(`/diet/meals`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': csrfToken
+            },
+            body: JSON.stringify({
+                mealPlanId: activePlanId,
+                name,
+                time: time || null
+            })
+        }).then(res => res.json()).then(data => {
+            if (data.success) {
+                hideAddMealForm();
+                location.reload();
+            } else {
+                alert(data.message || 'Erro ao criar refeição');
+            }
+        }).catch(err => {
+            console.error('Erro:', err);
+            alert('Erro ao criar refeição');
+        });
+    }
 
     function switchPlan(planId) {
         if (planId) {
@@ -119,7 +612,7 @@
     }
 
     function deleteMeal(mealId) {
-        if (confirm('Tem certeza?')) {
+        if (confirm('Deletar essa refeição? Todos os alimentos serão removidos.')) {
             fetch(`/diet/meals/${mealId}`, {
                 method: 'DELETE',
                 headers: {
@@ -130,15 +623,16 @@
     }
 
     function deleteFood(foodId) {
-        if (confirm('Tem certeza?')) {
+        if (confirm('Deletar esse alimento?')) {
             fetch(`/diet/foods/${foodId}`, {
                 method: 'DELETE',
                 headers: {
                     'X-CSRF-Token': csrfToken
                 }
-            }).then((...args) => {
-                if (args[0].ok) {
+            }).then(res => {
+                if (res.ok) {
                     document.querySelector(`[data-food-id="${foodId}"]`).remove();
+                    location.reload();
                 }
             });
         }
@@ -147,12 +641,21 @@
     function addFood(event, mealId) {
         event.preventDefault();
         const form = event.target;
-        const inputs = form.querySelectorAll('.food-input');
+        
+        const name = form.querySelector('.food-name').value;
+        const quantityValue = form.querySelector('.food-quantity').value;
+        const quantityUnit = form.querySelector('.food-unit').value;
+        const quantity = `${quantityValue}${quantityUnit}`;
+        
         const data = {
             mealId,
-            name: inputs[0].value,
-            quantity: inputs[1].value,
-            calories: inputs[2].value || null
+            name,
+            quantity,
+            calories: form.querySelector('.food-calories').value || null,
+            protein: form.querySelector('.food-protein').value || null,
+            carbs: form.querySelector('.food-carbs').value || null,
+            fat: form.querySelector('.food-fat').value || null,
+            notes: form.querySelector('.food-notes-input').value || null
         };
 
         fetch(`/diet/meals/${mealId}/foods`, {
@@ -162,11 +665,21 @@
                 'X-CSRF-Token': csrfToken
             },
             body: JSON.stringify(data)
-        }).then(() => location.reload());
+        }).then(res => res.json()).then(result => {
+            if (result.success) {
+                form.reset();
+                location.reload();
+            } else {
+                alert(result.message || 'Erro ao adicionar alimento');
+            }
+        }).catch(err => {
+            console.error('Erro:', err);
+            alert('Erro ao adicionar alimento');
+        });
     }
 
     function createNewPlan() {
-        const name = prompt('Nome do plano:');
+        const name = prompt('Nome do novo plano de dieta:');
         if (name) {
             fetch(`/diet/plans`, {
                 method: 'POST',
@@ -175,7 +688,16 @@
                     'X-CSRF-Token': csrfToken
                 },
                 body: JSON.stringify({ name })
-            }).then(() => location.reload());
+            }).then(res => res.json()).then(result => {
+                if (result.success) {
+                    location.reload();
+                } else {
+                    alert(result.message || 'Erro ao criar plano');
+                }
+            }).catch(err => {
+                console.error('Erro:', err);
+                alert('Erro ao criar plano');
+            });
         }
     }
 </script>
