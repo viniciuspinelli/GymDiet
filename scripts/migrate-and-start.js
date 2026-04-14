@@ -19,9 +19,9 @@ async function main() {
     console.log('✅ DATABASE_URL configurada');
     
     // Run migrations
-    console.log('📦 Executando migrations...');
+    console.log('📦 Sincronizando schema com banco de dados...');
     try {
-      const output = execSync('npx prisma migrate deploy', { 
+      const output = execSync('npx prisma db push --skip-generate', { 
         cwd: path.join(__dirname, '..'),
         encoding: 'utf-8'
       });
