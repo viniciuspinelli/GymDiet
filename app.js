@@ -60,17 +60,20 @@ app.use(
   })
 );
 
-// CSRF protection setup (but don't apply globally yet)
+// CSRF protection setup
 const csrfProtection = csrf({ cookie: false });
 
 // EJS view engine
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'src', 'views'));
 
-// Global response data middleware
+// Apply CSRF protection globally
+app.use(csrfProtection);
+
+// Global response data middleware (after CSRF so token is available)
 app.use((req, res, next) => {
   res.locals.user = req.session.user || null;
-  res.locals.csrfToken = req.csrfToken ? req.csrfToken() : '';
+  res.locals.csrfToken = req.csrfToken();
   next();
 });
 
@@ -78,7 +81,7 @@ app.use((req, res, next) => {
 // ROUTES
 // ========================
 
-// Setup route (NO CSRF protection)
+// Setup route (NO CSRF protection - skip via error handling)
 app.use('/setup', setupRoutes);
 
 // Serve setup page
@@ -86,10 +89,7 @@ app.get('/setup', (req, res) => {
   res.sendFile(path.join(__dirname, 'src', 'public', 'setup.html'));
 });
 
-// Apply CSRF protection from here onwards
-app.use(csrfProtection);
-
-// Public routes (with CSRF)
+// Public routes (CSRF already applied)
 app.use('/auth', authRoutes);
 
 // Redirect root to workouts (or login if not authenticated)
@@ -135,6 +135,11 @@ app.use((req, res) => {
 
 // Global error handler
 app.use((err, req, res, next) => {
+  // Allow CSRF errors for setup routes (they don't require CSRF token)
+  if (err.code === 'EBADCSRFTOKEN' && req.path.startsWith('/setup')) {
+    return next();
+  }
+
   const status = err.status || err.statusCode || 500;
   const message = err.message || 'Erro interno do servidor';
 
