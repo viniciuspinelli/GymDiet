@@ -63,7 +63,10 @@ app.use(
 // CSRF protection setup
 const csrfProtection = csrf({ cookie: false });
 
-// EJS view engine
+// EJS view engine with layouts support
+const expressEjsLayouts = require('express-ejs-layouts');
+app.use(expressEjsLayouts);
+app.set('layout', 'layouts/main');
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'src', 'views'));
 
