@@ -1842,3 +1842,15 @@ tbody td {
         padding: 16px;
     }
 }
+
+/* 🔧 Desktop - Show Sidebar */
+@media (min-width: 769px) {
+    .sidebar-nav {
+        display: flex !important;
+        flex-direction: column;
+    }
+    
+    .main-wrapper {
+        flex-direction: row;
+    }
+}
