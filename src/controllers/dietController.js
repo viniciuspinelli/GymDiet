@@ -131,8 +131,8 @@ exports.addMeal = async (req, res, next) => {
     }
 
     const result = await global.db.query(
-      `INSERT INTO "Meal" ("mealPlanId", name, "time", "createdAt")
-       VALUES ($1, $2, $3, NOW())
+      `INSERT INTO "Meal" ("mealPlanId", name, "time")
+       VALUES ($1, $2, $3)
        RETURNING *`,
       [parseInt(mealPlanId), name, time || null]
     );
@@ -182,8 +182,8 @@ exports.addFood = async (req, res, next) => {
     }
 
     const result = await global.db.query(
-      `INSERT INTO "MealFood" ("mealId", name, quantity, calories, protein, carbs, fat, notes, "createdAt")
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+      `INSERT INTO "MealFood" ("mealId", name, quantity, calories, protein, carbs, fat, notes)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        RETURNING *`,
       [
         parseInt(mealId),
