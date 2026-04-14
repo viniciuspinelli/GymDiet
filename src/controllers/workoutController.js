@@ -408,15 +408,19 @@ exports.updateWorkoutPlan = async (req, res, next) => {
     const { planId } = req.params;
     const { name, description, dayOfWeek, isActive } = req.body;
 
+    if (!name) {
+      return res.status(400).json({ success: false, message: 'Nome é obrigatório' });
+    }
+
     const result = await global.db.query(
       `UPDATE "WorkoutPlan" 
-       SET name = COALESCE($1, name), 
-           description = COALESCE($2, description),
-           "dayOfWeek" = COALESCE($3, "dayOfWeek"),
-           "isActive" = COALESCE($4, "isActive")
+       SET name = $1, 
+           description = $2,
+           "dayOfWeek" = $3,
+           "isActive" = $4
        WHERE id = $5
        RETURNING *`,
-      [name || null, description || null, dayOfWeek || null, isActive !== undefined ? isActive : null, parseInt(planId)]
+      [name, description || null, dayOfWeek || null, isActive !== undefined ? isActive : true, parseInt(planId)]
     );
 
     if (result.rows.length === 0) {
@@ -502,20 +506,24 @@ exports.updateExercise = async (req, res, next) => {
     const { exerciseId } = req.params;
     const { name, sets, reps, weight, restSeconds, notes } = req.body;
 
+    if (!name || !sets || !reps) {
+      return res.status(400).json({ success: false, message: 'Nome, séries e repetições são obrigatórios' });
+    }
+
     const result = await global.db.query(
       `UPDATE "Exercise" 
-       SET name = COALESCE($1, name),
-           sets = COALESCE($2, sets),
-           reps = COALESCE($3, reps),
-           weight = COALESCE($4, weight),
-           "restSeconds" = COALESCE($5, "restSeconds"),
-           notes = COALESCE($6, notes)
+       SET name = $1,
+           sets = $2,
+           reps = $3,
+           weight = $4,
+           "restSeconds" = $5,
+           notes = $6
        WHERE id = $7
        RETURNING *`,
       [
-        name || null,
-        sets ? parseInt(sets) : null,
-        reps || null,
+        name,
+        parseInt(sets),
+        reps,
         weight || null,
         restSeconds ? parseInt(restSeconds) : null,
         notes || null,
