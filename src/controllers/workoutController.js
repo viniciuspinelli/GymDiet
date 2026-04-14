@@ -136,7 +136,7 @@ exports.getActiveWorkout = async (req, res, next) => {
     // Get session exercises with details
     const exercisesResult = await global.db.query(
       `SELECT se.id, se."exerciseId", se."isCompleted", se."completedAt",
-              e.name, e.description, e.sets, e.reps
+              e.name, e.sets, e.reps, e.weight, e."restSeconds", e.notes
        FROM "SessionExercise" se
        JOIN "Exercise" e ON se."exerciseId" = e.id
        WHERE se."workoutSessionId" = $1
@@ -151,9 +151,11 @@ exports.getActiveWorkout = async (req, res, next) => {
       completedAt: row.completedAt,
       exercise: {
         name: row.name,
-        description: row.description,
         sets: row.sets,
         reps: row.reps,
+        weight: row.weight,
+        restSeconds: row.restSeconds,
+        notes: row.notes,
       }
     }));
 
