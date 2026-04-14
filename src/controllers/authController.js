@@ -8,7 +8,13 @@ exports.getLogin = (req, res) => {
   if (req.session.user) {
     return res.redirect('/workouts');
   }
-  res.render('auth/login', { title: 'Login' });
+  
+  // Ensure CSRF token is passed
+  const csrfToken = req.csrfToken ? req.csrfToken() : '';
+  res.render('auth/login', { 
+    title: 'Login',
+    csrfToken 
+  });
 };
 
 /**
@@ -20,9 +26,11 @@ exports.postLogin = async (req, res, next) => {
 
     // Validate inputs
     if (!username || !password) {
+      const csrfToken = req.csrfToken ? req.csrfToken() : '';
       return res.status(400).render('auth/login', {
         title: 'Login',
         error: 'Usuário e senha são obrigatórios',
+        csrfToken
       });
     }
 
@@ -35,9 +43,11 @@ exports.postLogin = async (req, res, next) => {
     const user = result.rows[0];
 
     if (!user) {
+      const csrfToken = req.csrfToken ? req.csrfToken() : '';
       return res.status(401).render('auth/login', {
         title: 'Login',
         error: 'Usuário ou senha inválidos',
+        csrfToken
       });
     }
 
@@ -45,9 +55,11 @@ exports.postLogin = async (req, res, next) => {
     const passwordMatch = await bcrypt.compare(password, user.password);
 
     if (!passwordMatch) {
+      const csrfToken = req.csrfToken ? req.csrfToken() : '';
       return res.status(401).render('auth/login', {
         title: 'Login',
         error: 'Usuário ou senha inválidos',
+        csrfToken
       });
     }
 
