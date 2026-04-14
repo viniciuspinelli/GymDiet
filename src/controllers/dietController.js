@@ -1,5 +1,4 @@
 // Diet Controller - Using global.db (pg Pool)
-// TODO: Adapt Prisma queries to pg format
 
 /**
  * Get diet page with active meal plan
@@ -7,53 +6,61 @@
 exports.getDiet = async (req, res, next) => {
   try {
     // Get active meal plan
-    let activePlan = await prisma.mealPlan.findFirst({
-      where: { isActive: true },
-      include: {
-        meals: {
-          include: { foods: { orderBy: { order: 'asc' } } },
-          orderBy: { order: 'asc' },
-        },
-      },
-    });
+    let activePlanResult = await global.db.query(
+      `SELECT id, name, "isActive" FROM "MealPlan" WHERE "isActive" = true LIMIT 1`
+    );
+
+    let activePlan = activePlanResult.rows[0] || null;
 
     // If no active plan, get the first one
     if (!activePlan) {
-      activePlan = await prisma.mealPlan.findFirst({
-        include: {
-          meals: {
-            include: { foods: { orderBy: { order: 'asc' } } },
-            orderBy: { order: 'asc' },
-          },
-        },
-      });
+      const firstResult = await global.db.query(
+        `SELECT id, name, "isActive" FROM "MealPlan" LIMIT 1`
+      );
+      activePlan = firstResult.rows[0] || null;
     }
 
     // Get all plans for switching
-    const allPlans = await prisma.mealPlan.findMany();
+    const allPlansResult = await global.db.query(
+      `SELECT id, name, "isActive" FROM "MealPlan" ORDER BY "createdAt" DESC`
+    );
+    const allPlans = allPlansResult.rows;
 
-    // Calculate totals
-    let totalCalories = 0;
-    let totalProtein = 0;
-    let totalCarbs = 0;
-    let totalFat = 0;
+    // Calculate totals if there's an active plan
+    let totals = { totalCalories: 0, totalProtein: 0, totalCarbs: 0, totalFat: 0 };
 
     if (activePlan) {
-      activePlan.meals.forEach((meal) => {
-        meal.foods.forEach((food) => {
-          totalCalories += food.calories || 0;
-          totalProtein += food.protein || 0;
-          totalCarbs += food.carbs || 0;
-          totalFat += food.fat || 0;
-        });
-      });
+      const mealsResult = await global.db.query(
+        `SELECT id, name, "time" FROM "Meal" WHERE "mealPlanId" = $1 ORDER BY "order" ASC`,
+        [activePlan.id]
+      );
+
+      const meals = mealsResult.rows;
+
+      for (const meal of meals) {
+        const foodsResult = await global.db.query(
+          `SELECT calories, protein, carbs, fat FROM "MealFood" WHERE "mealId" = $1 ORDER BY "order" ASC`,
+          [meal.id]
+        );
+
+        for (const food of foodsResult.rows) {
+          totals.totalCalories += food.calories || 0;
+          totals.totalProtein += food.protein || 0;
+          totals.totalCarbs += food.carbs || 0;
+          totals.totalFat += food.fat || 0;
+        }
+
+        meal.foods = foodsResult.rows;
+      }
+
+      activePlan.meals = meals;
     }
 
     res.render('diet/index', {
       title: 'Dieta',
       activePlan,
       allPlans,
-      totals: { totalCalories, totalProtein, totalCarbs, totalFat },
+      totals,
     });
   } catch (error) {
     console.error('Error fetching diet:', error);
@@ -72,11 +79,14 @@ exports.createMealPlan = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Nome é obrigatório' });
     }
 
-    const plan = await prisma.mealPlan.create({
-      data: { name, isActive: false },
-    });
+    const result = await global.db.query(
+      `INSERT INTO "MealPlan" (name, "isActive", "createdAt")
+       VALUES ($1, false, NOW())
+       RETURNING id, name, "isActive"`,
+      [name]
+    );
 
-    res.json({ success: true, plan });
+    res.json({ success: true, plan: result.rows[0] });
   } catch (error) {
     console.error('Error creating meal plan:', error);
     next(error);
@@ -91,18 +101,17 @@ exports.activateMealPlan = async (req, res, next) => {
     const { planId } = req.params;
 
     // Deactivate all other plans
-    await prisma.mealPlan.updateMany({
-      where: { isActive: true },
-      data: { isActive: false },
-    });
+    await global.db.query(
+      `UPDATE "MealPlan" SET "isActive" = false WHERE "isActive" = true`
+    );
 
     // Activate selected plan
-    const plan = await prisma.mealPlan.update({
-      where: { id: parseInt(planId) },
-      data: { isActive: true },
-    });
+    const result = await global.db.query(
+      `UPDATE "MealPlan" SET "isActive" = true WHERE id = $1 RETURNING *`,
+      [parseInt(planId)]
+    );
 
-    res.json({ success: true, plan });
+    res.json({ success: true, plan: result.rows[0] });
   } catch (error) {
     console.error('Error activating meal plan:', error);
     next(error);
@@ -120,15 +129,14 @@ exports.addMeal = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Nome é obrigatório' });
     }
 
-    const meal = await prisma.meal.create({
-      data: {
-        mealPlanId: parseInt(mealPlanId),
-        name,
-        time: time || null,
-      },
-    });
+    const result = await global.db.query(
+      `INSERT INTO "Meal" ("mealPlanId", name, "time", "createdAt")
+       VALUES ($1, $2, $3, NOW())
+       RETURNING *`,
+      [parseInt(mealPlanId), name, time || null]
+    );
 
-    res.json({ success: true, meal });
+    res.json({ success: true, meal: result.rows[0] });
   } catch (error) {
     console.error('Error adding meal:', error);
     next(error);
@@ -142,9 +150,17 @@ exports.deleteMeal = async (req, res, next) => {
   try {
     const { mealId } = req.params;
 
-    await prisma.meal.delete({
-      where: { id: parseInt(mealId) },
-    });
+    // Delete foods first
+    await global.db.query(
+      `DELETE FROM "MealFood" WHERE "mealId" = $1`,
+      [parseInt(mealId)]
+    );
+
+    // Delete meal
+    await global.db.query(
+      `DELETE FROM "Meal" WHERE id = $1`,
+      [parseInt(mealId)]
+    );
 
     res.json({ success: true });
   } catch (error) {
@@ -164,20 +180,23 @@ exports.addFood = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Nome e quantidade são obrigatórios' });
     }
 
-    const food = await prisma.mealFood.create({
-      data: {
-        mealId: parseInt(mealId),
+    const result = await global.db.query(
+      `INSERT INTO "MealFood" ("mealId", name, quantity, calories, protein, carbs, fat, notes, "createdAt")
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+       RETURNING *`,
+      [
+        parseInt(mealId),
         name,
         quantity,
-        calories: calories ? parseInt(calories) : null,
-        protein: protein ? parseFloat(protein) : null,
-        carbs: carbs ? parseFloat(carbs) : null,
-        fat: fat ? parseFloat(fat) : null,
-        notes: notes || null,
-      },
-    });
+        calories ? parseInt(calories) : null,
+        protein ? parseFloat(protein) : null,
+        carbs ? parseFloat(carbs) : null,
+        fat ? parseFloat(fat) : null,
+        notes || null
+      ]
+    );
 
-    res.json({ success: true, food });
+    res.json({ success: true, food: result.rows[0] });
   } catch (error) {
     console.error('Error adding food:', error);
     next(error);
@@ -191,9 +210,10 @@ exports.deleteFood = async (req, res, next) => {
   try {
     const { foodId } = req.params;
 
-    await prisma.mealFood.delete({
-      where: { id: parseInt(foodId) },
-    });
+    await global.db.query(
+      `DELETE FROM "MealFood" WHERE id = $1`,
+      [parseInt(foodId)]
+    );
 
     res.json({ success: true });
   } catch (error) {
@@ -214,12 +234,12 @@ exports.updateMealPlanName = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Nome é obrigatório' });
     }
 
-    const plan = await prisma.mealPlan.update({
-      where: { id: parseInt(planId) },
-      data: { name },
-    });
+    const result = await global.db.query(
+      `UPDATE "MealPlan" SET name = $1 WHERE id = $2 RETURNING *`,
+      [name, parseInt(planId)]
+    );
 
-    res.json({ success: true, plan });
+    res.json({ success: true, plan: result.rows[0] });
   } catch (error) {
     console.error('Error updating meal plan:', error);
     next(error);
