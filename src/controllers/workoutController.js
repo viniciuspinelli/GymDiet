@@ -167,6 +167,7 @@ exports.getActiveWorkout = async (req, res, next) => {
       session,
       completedCount,
       totalCount,
+      csrfToken: req.csrfToken(),
     });
   } catch (error) {
     console.error('Error fetching active workout:', error);
