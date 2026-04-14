@@ -43,14 +43,22 @@ exports.getDiet = async (req, res, next) => {
           [meal.id]
         );
 
-        for (const food of foodsResult.rows) {
+        // Convert food values to numbers to prevent .toFixed() errors
+        const foods = foodsResult.rows.map(food => ({
+          calories: parseFloat(food.calories || 0),
+          protein: parseFloat(food.protein || 0),
+          carbs: parseFloat(food.carbs || 0),
+          fat: parseFloat(food.fat || 0)
+        }));
+
+        for (const food of foods) {
           totals.totalCalories += food.calories || 0;
           totals.totalProtein += food.protein || 0;
           totals.totalCarbs += food.carbs || 0;
           totals.totalFat += food.fat || 0;
         }
 
-        meal.foods = foodsResult.rows;
+        meal.foods = foods;
       }
 
       activePlan.meals = meals;

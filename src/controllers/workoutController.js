@@ -253,7 +253,7 @@ exports.getHistory = async (req, res, next) => {
 
     // Get completed sessions
     const sessionsResult = await global.db.query(
-      `SELECT ws.id, ws."workoutPlanId", ws."startedAt", ws."completedAt", ws."durationMin",
+      `SELECT ws.id, ws."workoutPlanId", ws."startedAt", ws."completedAt", ws."durationMin", ws."notes",
               wp.name as plan_name
        FROM "WorkoutSession" ws
        JOIN "WorkoutPlan" wp ON ws."workoutPlanId" = wp.id
@@ -262,14 +262,26 @@ exports.getHistory = async (req, res, next) => {
       [userId]
     );
 
-    const sessions = sessionsResult.rows.map(row => ({
-      id: row.id,
-      workoutPlanId: row.workoutPlanId,
-      startedAt: row.startedAt,
-      completedAt: row.completedAt,
-      durationMin: row.durationMin,
-      workoutPlan: { name: row.plan_name }
-    }));
+    // Load session exercises for each session
+    const sessions = await Promise.all(
+      sessionsResult.rows.map(async (row) => {
+        const exercisesResult = await global.db.query(
+          `SELECT id, "isCompleted" FROM "SessionExercise" WHERE "workoutSessionId" = $1`,
+          [row.id]
+        );
+        
+        return {
+          id: row.id,
+          workoutPlanId: row.workoutPlanId,
+          startedAt: row.startedAt,
+          completedAt: row.completedAt,
+          durationMin: row.durationMin,
+          notes: row.notes,
+          workoutPlan: { name: row.plan_name },
+          sessionExercises: exercisesResult.rows
+        };
+      })
+    );
 
     // Group sessions by plan name
     const sessionsByPlan = {};
