@@ -1,0 +1,670 @@
+<div class="plans-management-page">
+    <!-- Header -->
+    <div class="page-header">
+        <h1>📋 Gerenciar Planos de Treino</h1>
+        <p class="subtitle">Crie e configure seus planos de treino com exercícios personalizados</p>
+    </div>
+
+    <!-- Create New Plan Section -->
+    <div class="create-plan-section">
+        <h2>Novo Plano de Treino</h2>
+        <form id="createPlanForm" class="plan-form">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="planName">Nome do Plano *</label>
+                    <input type="text" id="planName" name="name" placeholder="ex: Peito e Costas" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="planDay">Dia da Semana</label>
+                    <select id="planDay" name="dayOfWeek">
+                        <option value="">Selecione...</option>
+                        <option value="Segunda">Segunda</option>
+                        <option value="Terça">Terça</option>
+                        <option value="Quarta">Quarta</option>
+                        <option value="Quinta">Quinta</option>
+                        <option value="Sexta">Sexta</option>
+                        <option value="Sábado">Sábado</option>
+                        <option value="Domingo">Domingo</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="planDescription">Descrição</label>
+                <textarea id="planDescription" name="description" placeholder="Descreva o objetivo deste plano..." rows="2"></textarea>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-lg">
+                ➕ Criar Plano de Treino
+            </button>
+        </form>
+    </div>
+
+    <!-- Plans List -->
+    <div class="plans-list">
+        <h2>Planos Existentes</h2>
+        
+        <% if (plans.length > 0) { %>
+            <% plans.forEach(plan => { %>
+                <div class="plan-card">
+                    <!-- Plan Header -->
+                    <div class="plan-header">
+                        <div class="plan-info">
+                            <h3><%= plan.name %></h3>
+                            <% if (plan.dayOfWeek) { %>
+                                <span class="day-badge">📅 <%= plan.dayOfWeek %></span>
+                            <% } %>
+                            <span class="exercise-count">🏋️ <%= plan.exercise_count %> exercício(s)</span>
+                        </div>
+                        <% if (plan.description) { %>
+                            <p class="plan-description"><%= plan.description %></p>
+                        <% } %>
+                        <div class="plan-actions">
+                            <button class="btn btn-danger btn-sm" onclick="deletePlan(<%= plan.id %>)">
+                                🗑️ Deletar Plano
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Exercises List for this Plan -->
+                    <div class="exercises-section">
+                        <h4>Exercícios</h4>
+                        <div id="exercises-<%= plan.id %>" class="exercises-list">
+                            <!-- Will be populated by JavaScript -->
+                            <p class="loading">Carregando exercícios...</p>
+                        </div>
+
+                        <!-- Add Exercise Form -->
+                        <div class="add-exercise-form">
+                            <h5>Adicionar Exercício</h5>
+                            <form class="exercise-form" onsubmit="addExercise(event, <%= plan.id %>)">
+                                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                                
+                                <div class="form-row">
+                                    <div class="form-group flex-1">
+                                        <label>Nome *</label>
+                                        <input type="text" name="name" placeholder="ex: Supino" required>
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label>Séries *</label>
+                                        <input type="number" name="sets" placeholder="4" min="1" max="10" required>
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label>Repetições *</label>
+                                        <input type="text" name="reps" placeholder="8-10" required>
+                                    </div>
+                                </div>
+
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Peso/Carga</label>
+                                        <input type="text" name="weight" placeholder="ex: 60kg">
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label>Descanso (segundos)</label>
+                                        <input type="number" name="restSeconds" placeholder="60" min="0">
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label>Notas</label>
+                                    <textarea name="notes" placeholder="Notas técnicas..." rows="1"></textarea>
+                                </div>
+
+                                <button type="submit" class="btn btn-secondary">
+                                    ➕ Adicionar Exercício
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            <% }); %>
+        <% } else { %>
+            <div class="empty-state">
+                <p>Nenhum plano de treino criado ainda.</p>
+                <p>Crie seu primeiro plano usando o formulário acima! 🎯</p>
+            </div>
+        <% } %>
+    </div>
+</div>
+
+<style>
+.plans-management-page {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.page-header {
+    margin-bottom: 40px;
+    text-align: center;
+}
+
+.page-header h1 {
+    font-size: 2.5rem;
+    margin-bottom: 10px;
+    color: #0f172a;
+}
+
+.subtitle {
+    color: #64748b;
+    font-size: 1.1rem;
+}
+
+/* Create Plan Section */
+.create-plan-section {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 15px;
+    padding: 30px;
+    margin-bottom: 40px;
+    color: white;
+}
+
+.create-plan-section h2 {
+    margin-bottom: 20px;
+    font-size: 1.5rem;
+}
+
+.plan-form {
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 10px;
+    padding: 20px;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-group.flex-1 {
+    flex: 1;
+}
+
+.form-group label {
+    font-weight: 600;
+    margin-bottom: 5px;
+    color: #1e293b;
+    font-size: 0.9rem;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    padding: 10px;
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-family: inherit;
+    transition: border-color 0.3s;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+/* Plans List */
+.plans-list {
+    margin-top: 40px;
+}
+
+.plans-list h2 {
+    margin-bottom: 20px;
+    font-size: 1.5rem;
+    color: #0f172a;
+}
+
+.plan-card {
+    background: white;
+    border: 2px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 25px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s;
+}
+
+.plan-card:hover {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+    border-color: #cbd5e1;
+}
+
+.plan-header {
+    border-bottom: 2px solid #f1f5f9;
+    padding-bottom: 15px;
+    margin-bottom: 20px;
+}
+
+.plan-header h3 {
+    font-size: 1.5rem;
+    margin-bottom: 10px;
+    color: #0f172a;
+}
+
+.plan-info {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+}
+
+.day-badge,
+.exercise-count {
+    display: inline-block;
+    padding: 5px 12px;
+    background: #f0f4f8;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    color: #475569;
+}
+
+.plan-description {
+    color: #64748b;
+    margin: 10px 0;
+    font-style: italic;
+}
+
+.plan-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+/* Exercises Section */
+.exercises-section {
+    margin: 20px 0;
+}
+
+.exercises-section h4 {
+    margin-bottom: 15px;
+    color: #0f172a;
+    font-size: 1.2rem;
+}
+
+.exercises-list {
+    background: #f9fafb;
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 20px;
+    min-height: 50px;
+}
+
+.exercise-item {
+    background: white;
+    border-left: 4px solid #667eea;
+    padding: 12px 15px;
+    margin-bottom: 10px;
+    border-radius: 6px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.exercise-item:last-child {
+    margin-bottom: 0;
+}
+
+.exercise-details {
+    flex: 1;
+}
+
+.exercise-name {
+    font-weight: 600;
+    color: #0f172a;
+    font-size: 1.05rem;
+}
+
+.exercise-meta {
+    display: flex;
+    gap: 15px;
+    margin-top: 5px;
+    font-size: 0.9rem;
+    color: #64748b;
+}
+
+.exercise-meta span {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.exercise-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.loading {
+    color: #94a3b8;
+    text-align: center;
+    padding: 20px;
+}
+
+.empty-state {
+    background: #f0f4f8;
+    border-radius: 10px;
+    padding: 40px;
+    text-align: center;
+    color: #64748b;
+}
+
+.empty-state p {
+    margin: 10px 0;
+    font-size: 1.1rem;
+}
+
+/* Add Exercise Form */
+.add-exercise-form {
+    background: #f8fafc;
+    border: 2px dashed #cbd5e1;
+    border-radius: 10px;
+    padding: 20px;
+    margin-top: 20px;
+}
+
+.add-exercise-form h5 {
+    margin-bottom: 15px;
+    color: #0f172a;
+}
+
+.exercise-form {
+    background: white;
+    padding: 15px;
+    border-radius: 8px;
+}
+
+/* Buttons */
+.btn {
+    padding: 10px 16px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.3s;
+    font-size: 0.95rem;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.btn-primary.btn-lg {
+    padding: 12px 24px;
+    font-size: 1rem;
+}
+
+.btn-secondary {
+    background: #e2e8f0;
+    color: #0f172a;
+}
+
+.btn-secondary:hover {
+    background: #cbd5e1;
+}
+
+.btn-danger {
+    background: #ef4444;
+    color: white;
+}
+
+.btn-danger:hover {
+    background: #dc2626;
+}
+
+.btn-sm {
+    padding: 6px 12px;
+    font-size: 0.85rem;
+}
+
+@media (max-width: 768px) {
+    .page-header h1 {
+        font-size: 1.8rem;
+    }
+
+    .create-plan-section {
+        padding: 20px;
+    }
+
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+
+    .plan-info {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}
+</style>
+
+<script>
+// Load exercises when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    const plans = <%= JSON.stringify(plans) %>;
+    plans.forEach(plan => loadExercises(plan.id));
+});
+
+// Load exercises for a plan
+async function loadExercises(planId) {
+    try {
+        const response = await fetch(`/workouts/plans/${planId}/exercises`);
+        const data = await response.json();
+        
+        const container = document.getElementById(`exercises-${planId}`);
+        
+        if (data.exercises.length === 0) {
+            container.innerHTML = '<p class="no-exercises">Nenhum exercício adicionado ainda</p>';
+            return;
+        }
+
+        container.innerHTML = data.exercises.map(ex => `
+            <div class="exercise-item">
+                <div class="exercise-details">
+                    <div class="exercise-name">${ex.name}</div>
+                    <div class="exercise-meta">
+                        <span>💪 ${ex.sets}x${ex.reps}</span>
+                        ${ex.weight ? `<span>⚖️ ${ex.weight}</span>` : ''}
+                        ${ex.restSeconds ? `<span>🕐 ${ex.restSeconds}s descanso</span>` : ''}
+                        ${ex.notes ? `<span>📝 ${ex.notes}</span>` : ''}
+                    </div>
+                </div>
+                <div class="exercise-actions">
+                    <button class="btn btn-danger btn-sm" onclick="deleteExercise(${ex.id})">
+                        🗑️
+                    </button>
+                </div>
+            </div>
+        `).join('');
+    } catch (error) {
+        console.error('Error loading exercises:', error);
+        document.getElementById(`exercises-${planId}`).innerHTML = 
+            '<p class="error">Erro ao carregar exercícios</p>';
+    }
+}
+
+// Create new plan
+document.getElementById('createPlanForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const data = {
+        name: formData.get('name'),
+        description: formData.get('description'),
+        dayOfWeek: formData.get('dayOfWeek')
+    };
+
+    try {
+        const response = await fetch('/workouts/plans', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': formData.get('_csrf')
+            },
+            body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            showToast(`Plano "${data.name}" criado com sucesso! 🎉`, 'success');
+            this.reset();
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            showToast(result.message || 'Erro ao criar plano', 'error');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showToast('Erro ao criar plano', 'error');
+    }
+});
+
+// Add exercise to plan
+async function addExercise(event, planId) {
+    event.preventDefault();
+    
+    const form = event.target;
+    const formData = new FormData(form);
+    const data = {
+        name: formData.get('name'),
+        sets: formData.get('sets'),
+        reps: formData.get('reps'),
+        weight: formData.get('weight'),
+        restSeconds: formData.get('restSeconds'),
+        notes: formData.get('notes')
+    };
+
+    try {
+        const response = await fetch(`/workouts/plans/${planId}/exercises`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': formData.get('_csrf')
+            },
+            body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            showToast(`Exercício "${data.name}" adicionado! 🏋️`, 'success');
+            form.reset();
+            loadExercises(planId);
+        } else {
+            showToast(result.message || 'Erro ao adicionar exercício', 'error');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showToast('Erro ao adicionar exercício', 'error');
+    }
+}
+
+// Delete exercise
+async function deleteExercise(exerciseId) {
+    if (!confirm('Tem certeza que deseja deletar este exercício?')) return;
+
+    try {
+        const response = await fetch(`/workouts/exercises/${exerciseId}`, {
+            method: 'DELETE'
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            showToast('Exercício deletado! ✓', 'success');
+            // Reload the page to refresh the list
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            showToast(result.message || 'Erro ao deletar exercício', 'error');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showToast('Erro ao deletar exercício', 'error');
+    }
+}
+
+// Delete plan
+async function deletePlan(planId) {
+    if (!confirm('Tem certeza que deseja deletar este plano? (exercícios associados também serão deletados)')) return;
+
+    try {
+        const response = await fetch(`/workouts/plans/${planId}`, {
+            method: 'DELETE'
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            showToast('Plano deletado! ✓', 'success');
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            showToast(result.message || 'Erro ao deletar plano', 'error');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showToast('Erro ao deletar plano', 'error');
+    }
+}
+
+// Show toast notification
+function showToast(message, type = 'info') {
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.textContent = message;
+    toast.style.cssText = `
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        padding: 15px 20px;
+        background: ${type === 'success' ? '#10b981' : type === 'error' ? '#ef4444' : '#3b82f6'};
+        color: white;
+        border-radius: 8px;
+        z-index: 9999;
+        animation: slideIn 0.3s ease-out;
+    `;
+    
+    document.body.appendChild(toast);
+    
+    setTimeout(() => {
+        toast.style.animation = 'slideOut 0.3s ease-out';
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+}
+
+// Add toast animations
+if (!document.querySelector('style[data-toast-animations]')) {
+    const style = document.createElement('style');
+    style.setAttribute('data-toast-animations', 'true');
+    style.textContent = `
+        @keyframes slideIn {
+            from { transform: translateX(400px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes slideOut {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(400px); opacity: 0; }
+        }
+    `;
+    document.head.appendChild(style);
+}
+</script>

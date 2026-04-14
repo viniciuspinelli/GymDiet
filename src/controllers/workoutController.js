@@ -1,7 +1,7 @@
 // Workout Controller - Using global.db (pg Pool)
 
 /**
- * Get all workout plans
+ * Get all workout plans with exercises
  */
 exports.getWorkouts = async (req, res, next) => {
   try {
@@ -18,7 +18,25 @@ exports.getWorkouts = async (req, res, next) => {
       [userId]
     );
 
-    const plans = plansResult.rows;
+    // Get exercises and sessions for each plan
+    const plans = await Promise.all(plansResult.rows.map(async (plan) => {
+      const exercisesResult = await global.db.query(
+        'SELECT id, name, sets, reps, weight, "restSeconds", notes, "order" FROM "Exercise" WHERE "workoutPlanId" = $1 ORDER BY "order" ASC',
+        [plan.id]
+      );
+
+      const userSessionsResult = await global.db.query(
+        'SELECT id FROM "WorkoutSession" WHERE "userId" = $1 AND "workoutPlanId" = $2 AND "isCompleted" = true',
+        [userId, plan.id]
+      );
+
+      return {
+        ...plan,
+        exercises: exercisesResult.rows,
+        sessions: userSessionsResult.rows
+      };
+    }));
+
     const totalSessions = parseInt(sessionsResult.rows[0].count);
 
     res.render('workouts/index', {
@@ -292,6 +310,248 @@ exports.deleteSession = async (req, res, next) => {
     res.json({ success: true });
   } catch (error) {
     console.error('Error deleting session:', error);
+    next(error);
+  }
+};
+
+/**
+ * Get all workout plans for management
+ */
+exports.getWorkoutPlans = async (req, res, next) => {
+  try {
+    // Get all plans with exercise count
+    const result = await global.db.query(`
+      SELECT 
+        wp.id, 
+        wp.name, 
+        wp.description, 
+        wp."dayOfWeek",
+        wp."order",
+        wp."isActive",
+        COUNT(e.id) as exercise_count
+      FROM "WorkoutPlan" wp
+      LEFT JOIN "Exercise" e ON wp.id = e."workoutPlanId"
+      GROUP BY wp.id
+      ORDER BY wp."order" ASC
+    `);
+
+    res.render('workouts/plans', {
+      title: 'Gerenciar Treinos',
+      plans: result.rows,
+    });
+  } catch (error) {
+    console.error('Error fetching workout plans:', error);
+    next(error);
+  }
+};
+
+/**
+ * Create a new workout plan
+ */
+exports.createWorkoutPlan = async (req, res, next) => {
+  try {
+    const { name, description, dayOfWeek } = req.body;
+
+    if (!name) {
+      return res.status(400).json({ success: false, message: 'Nome é obrigatório' });
+    }
+
+    const result = await global.db.query(
+      `INSERT INTO "WorkoutPlan" (name, description, "dayOfWeek", "isActive")
+       VALUES ($1, $2, $3, true)
+       RETURNING *`,
+      [name, description || null, dayOfWeek || null]
+    );
+
+    res.json({ success: true, plan: result.rows[0] });
+  } catch (error) {
+    console.error('Error creating workout plan:', error);
+    next(error);
+  }
+};
+
+/**
+ * Update a workout plan
+ */
+exports.updateWorkoutPlan = async (req, res, next) => {
+  try {
+    const { planId } = req.params;
+    const { name, description, dayOfWeek, isActive } = req.body;
+
+    const result = await global.db.query(
+      `UPDATE "WorkoutPlan" 
+       SET name = COALESCE($1, name), 
+           description = COALESCE($2, description),
+           "dayOfWeek" = COALESCE($3, "dayOfWeek"),
+           "isActive" = COALESCE($4, "isActive")
+       WHERE id = $5
+       RETURNING *`,
+      [name || null, description || null, dayOfWeek || null, isActive !== undefined ? isActive : null, parseInt(planId)]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Plano não encontrado' });
+    }
+
+    res.json({ success: true, plan: result.rows[0] });
+  } catch (error) {
+    console.error('Error updating workout plan:', error);
+    next(error);
+  }
+};
+
+/**
+ * Delete a workout plan
+ */
+exports.deleteWorkoutPlan = async (req, res, next) => {
+  try {
+    const { planId } = req.params;
+
+    // Delete associated exercises first (cascade)
+    await global.db.query(
+      'DELETE FROM "Exercise" WHERE "workoutPlanId" = $1',
+      [parseInt(planId)]
+    );
+
+    // Delete the plan
+    await global.db.query(
+      'DELETE FROM "WorkoutPlan" WHERE id = $1',
+      [parseInt(planId)]
+    );
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting workout plan:', error);
+    next(error);
+  }
+};
+
+/**
+ * Add an exercise to a workout plan
+ */
+exports.addExercise = async (req, res, next) => {
+  try {
+    const { planId } = req.params;
+    const { name, sets, reps, weight, restSeconds, notes } = req.body;
+
+    if (!name || !sets || !reps) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Nome, séries e repetições são obrigatórios' 
+      });
+    }
+
+    const result = await global.db.query(
+      `INSERT INTO "Exercise" (
+        "workoutPlanId", name, sets, reps, weight, "restSeconds", notes
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+       RETURNING *`,
+      [
+        parseInt(planId), 
+        name, 
+        parseInt(sets), 
+        reps, 
+        weight || null, 
+        restSeconds ? parseInt(restSeconds) : null,
+        notes || null
+      ]
+    );
+
+    res.json({ success: true, exercise: result.rows[0] });
+  } catch (error) {
+    console.error('Error adding exercise:', error);
+    next(error);
+  }
+};
+
+/**
+ * Update an exercise
+ */
+exports.updateExercise = async (req, res, next) => {
+  try {
+    const { exerciseId } = req.params;
+    const { name, sets, reps, weight, restSeconds, notes } = req.body;
+
+    const result = await global.db.query(
+      `UPDATE "Exercise" 
+       SET name = COALESCE($1, name),
+           sets = COALESCE($2, sets),
+           reps = COALESCE($3, reps),
+           weight = COALESCE($4, weight),
+           "restSeconds" = COALESCE($5, "restSeconds"),
+           notes = COALESCE($6, notes)
+       WHERE id = $7
+       RETURNING *`,
+      [
+        name || null,
+        sets ? parseInt(sets) : null,
+        reps || null,
+        weight || null,
+        restSeconds ? parseInt(restSeconds) : null,
+        notes || null,
+        parseInt(exerciseId)
+      ]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Exercício não encontrado' });
+    }
+
+    res.json({ success: true, exercise: result.rows[0] });
+  } catch (error) {
+    console.error('Error updating exercise:', error);
+    next(error);
+  }
+};
+
+/**
+ * Delete an exercise
+ */
+exports.deleteExercise = async (req, res, next) => {
+  try {
+    const { exerciseId } = req.params;
+
+    // Check if exercise exists
+    const checkResult = await global.db.query(
+      'SELECT id FROM "Exercise" WHERE id = $1',
+      [parseInt(exerciseId)]
+    );
+
+    if (checkResult.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Exercício não encontrado' });
+    }
+
+    // Delete the exercise
+    await global.db.query(
+      'DELETE FROM "Exercise" WHERE id = $1',
+      [parseInt(exerciseId)]
+    );
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting exercise:', error);
+    next(error);
+  }
+};
+
+/**
+ * Get exercises for a plan (API)
+ */
+exports.getExercisesForPlan = async (req, res, next) => {
+  try {
+    const { planId } = req.params;
+
+    const result = await global.db.query(
+      `SELECT id, name, sets, reps, weight, "restSeconds", notes, "order"
+       FROM "Exercise" 
+       WHERE "workoutPlanId" = $1
+       ORDER BY "order" ASC`,
+      [parseInt(planId)]
+    );
+
+    res.json({ success: true, exercises: result.rows });
+  } catch (error) {
+    console.error('Error fetching exercises:', error);
     next(error);
   }
 };

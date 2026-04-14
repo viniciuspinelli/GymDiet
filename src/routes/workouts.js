@@ -3,7 +3,39 @@ const workoutController = require('../controllers/workoutController');
 
 const router = express.Router();
 
-// GET /workouts - list all workouts
+// ========================
+// WORKOUT MANAGEMENT
+// ========================
+
+// GET /workouts/plans - manage workout plans
+router.get('/plans', workoutController.getWorkoutPlans);
+
+// POST /workouts/plans - create new workout plan
+router.post('/plans', workoutController.createWorkoutPlan);
+
+// PUT /workouts/plans/:planId - update workout plan
+router.put('/plans/:planId', workoutController.updateWorkoutPlan);
+
+// DELETE /workouts/plans/:planId - delete workout plan
+router.delete('/plans/:planId', workoutController.deleteWorkoutPlan);
+
+// POST /workouts/plans/:planId/exercises - add exercise
+router.post('/plans/:planId/exercises', workoutController.addExercise);
+
+// PUT /workouts/exercises/:exerciseId - update exercise
+router.put('/exercises/:exerciseId', workoutController.updateExercise);
+
+// DELETE /workouts/exercises/:exerciseId - delete exercise
+router.delete('/exercises/:exerciseId', workoutController.deleteExercise);
+
+// GET /workouts/plans/:planId/exercises - get exercises for plan (API)
+router.get('/plans/:planId/exercises', workoutController.getExercisesForPlan);
+
+// ========================
+// WORKOUT EXECUTION
+// ========================
+
+// GET /workouts - list all active workouts
 router.get('/', workoutController.getWorkouts);
 
 // POST /workouts/:id/start - start a new workout session
