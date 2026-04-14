@@ -21,7 +21,7 @@ async function main() {
     // Run migrations
     console.log('📦 Executando migrations...');
     try {
-      const output = execSync('npx prisma migrate deploy --skip-generate', { 
+      const output = execSync('npx prisma migrate deploy', { 
         cwd: path.join(__dirname, '..'),
         encoding: 'utf-8'
       });
