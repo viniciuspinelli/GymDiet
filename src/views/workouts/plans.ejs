@@ -2,105 +2,37 @@
 
 <div class="plans-page">
 
-    <!-- Page Header -->
     <div class="page-header">
         <div>
-            <h1>Gerenciar Treinos</h1>
-            <p class="page-subtitle">Crie e edite seus planos e exercicios</p>
+            <h1>Planos de Treino</h1>
+            <p class="page-subtitle">Gerencie seus planos e exercicios</p>
         </div>
-        <button class="btn btn-primary" onclick="openCreatePlanModal()">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        <button class="btn btn-primary" onclick="openCreateModal()">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             Novo Plano
         </button>
     </div>
 
-    <!-- Plans List -->
+    <!-- Lista de Planos -->
     <% if (plans.length > 0) { %>
-        <div class="plans-list">
+        <div class="plans-simple-list">
             <% plans.forEach(plan => { %>
-                <div class="plan-card" id="plan-card-<%= plan.id %>">
-                    <div class="plan-card-header">
-                        <div class="plan-card-info">
-                            <div class="plan-card-title-row">
-                                <h2 class="plan-card-name"><%= plan.name %></h2>
-                                <div class="plan-badges">
-                                    <% if (plan.dayOfWeek) { %>
-                                        <span class="day-badge"><%= plan.dayOfWeek %></span>
-                                    <% } %>
-                                    <span class="badge-count" id="exercise-count-<%= plan.id %>"><%= plan.exercise_count %> exerc.</span>
-                                    <% if (!plan.isActive) { %>
-                                        <span class="badge badge-warning">Inativo</span>
-                                    <% } %>
-                                </div>
-                            </div>
-                            <% if (plan.description) { %>
-                                <p class="plan-card-description"><%= plan.description %></p>
-                            <% } %>
-                        </div>
-                        <div class="plan-card-actions">
-                            <button class="btn btn-secondary btn-sm" onclick="openEditPlanModal(<%= plan.id %>, '<%= plan.name.replace(/\'/g, `\\'`) %>', '<%= (plan.dayOfWeek || '').replace(/\'/g, `\\'`) %>', '<%= (plan.description || '').replace(/\'/g, `\\'`) %>', <%= plan.isActive %>)">
-                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                                Editar
-                            </button>
-                            <button class="btn btn-danger btn-sm" onclick="deletePlan(<%= plan.id %>, '<%= plan.name.replace(/\'/g, `\\'`) %>')">
-                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-                                Deletar
-                            </button>
+                <div class="plan-row" id="plan-row-<%= plan.id %>">
+                    <div class="plan-row-info">
+                        <span class="plan-row-name"><%= plan.name %></span>
+                        <div class="plan-row-meta">
+                            <% if (plan.dayOfWeek) { %><span class="day-badge"><%= plan.dayOfWeek %></span><% } %>
+                            <span class="badge-count"><%= plan.exercise_count %> exerc.</span>
+                            <% if (!plan.isActive) { %><span class="badge badge-warning">Inativo</span><% } %>
                         </div>
                     </div>
-
-                    <div class="plan-exercises-section">
-                        <div class="exercises-section-header">
-                            <span class="exercises-section-label">EXERCICIOS</span>
-                        </div>
-                        <div class="exercises-dynamic-list" id="exercises-<%= plan.id %>">
-                            <div class="exercises-loading"><span>Carregando...</span></div>
-                        </div>
-                        <details class="add-exercise-details">
-                            <summary class="add-exercise-summary">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                                Adicionar Exercicio
-                            </summary>
-                            <div class="add-exercise-body">
-                                <form class="add-exercise-form" id="addExerciseForm-<%= plan.id %>" onsubmit="submitAddExercise(event, <%= plan.id %>)">
-                                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-                                    <div class="form-grid-3">
-                                        <div class="form-group">
-                                            <label>Nome *</label>
-                                            <input type="text" name="name" placeholder="ex: Supino Reto" required>
-                                        </div>
-                                        <div class="form-group">
-                                            <label>Series *</label>
-                                            <input type="number" name="sets" placeholder="4" min="1" max="20" required>
-                                        </div>
-                                        <div class="form-group">
-                                            <label>Repeticoes *</label>
-                                            <input type="text" name="reps" placeholder="8-12" required>
-                                        </div>
-                                    </div>
-                                    <div class="form-grid-3">
-                                        <div class="form-group">
-                                            <label>Carga</label>
-                                            <input type="text" name="weight" placeholder="ex: 60kg">
-                                        </div>
-                                        <div class="form-group">
-                                            <label>Descanso (seg)</label>
-                                            <input type="number" name="restSeconds" placeholder="60" min="0">
-                                        </div>
-                                        <div class="form-group">
-                                            <label>Notas</label>
-                                            <input type="text" name="notes" placeholder="Dicas tecnicas...">
-                                        </div>
-                                    </div>
-                                    <div class="form-actions-row">
-                                        <button type="submit" class="btn btn-primary btn-sm">
-                                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                                            Adicionar
-                                        </button>
-                                    </div>
-                                </form>
-                            </div>
-                        </details>
+                    <div class="plan-row-actions">
+                        <button class="btn btn-secondary btn-sm" onclick="openEditModal(<%= plan.id %>, '<%= plan.name.replace(/\'/g, `\\'`) %>', '<%= (plan.dayOfWeek || '').replace(/\'/g, `\\'`) %>', '<%= (plan.description || '').replace(/\'/g, `\\'`) %>', <%= plan.isActive %>)">
+                            Editar
+                        </button>
+                        <button class="btn btn-danger btn-sm" onclick="deletePlan(<%= plan.id %>, '<%= plan.name.replace(/\'/g, `\\'`) %>')">
+                            Deletar
+                        </button>
                     </div>
                 </div>
             <% }); %>
@@ -108,142 +40,184 @@
     <% } else { %>
         <div class="empty-state">
             <span class="empty-state-icon">&#127947;</span>
-            <p>Nenhum plano de treino criado ainda</p>
-            <small>Clique em "Novo Plano" para comecar</small>
-            <button class="btn btn-primary" onclick="openCreatePlanModal()">Criar Primeiro Plano</button>
+            <p>Nenhum plano criado ainda</p>
+            <small>Crie seu primeiro plano de treino</small>
+            <button class="btn btn-primary" onclick="openCreateModal()">Criar Plano</button>
         </div>
     <% } %>
 
 </div>
 
 <!-- MODAL: CRIAR PLANO -->
-<div class="modal-backdrop" id="modal-create-plan" onclick="closeModal('modal-create-plan')">
+<div class="modal-backdrop" id="modal-create" onclick="closeModal('modal-create')">
     <div class="modal-content" onclick="event.stopPropagation()">
         <div class="modal-header">
-            <h2>Novo Plano de Treino</h2>
-            <button class="modal-close" onclick="closeModal('modal-create-plan')">&times;</button>
+            <h2>Novo Plano</h2>
+            <button class="modal-close" onclick="closeModal('modal-create')">&times;</button>
         </div>
-        <form id="createPlanForm" onsubmit="submitCreatePlan(event)">
+        <form onsubmit="submitCreate(event)">
             <input type="hidden" name="_csrf" value="<%= csrfToken %>">
             <div class="form-row">
                 <div class="form-group">
-                    <label for="create-plan-name">Nome do Plano *</label>
-                    <input type="text" id="create-plan-name" name="name" placeholder="ex: Peito e Costas" required>
+                    <label>Nome *</label>
+                    <input type="text" id="c-name" name="name" placeholder="ex: Peito e Costas" required>
                 </div>
                 <div class="form-group">
-                    <label for="create-plan-day">Dia da Semana</label>
-                    <select id="create-plan-day" name="dayOfWeek">
-                        <option value="">Selecione...</option>
-                        <option value="Segunda">Segunda</option>
-                        <option value="Terca">Terca</option>
-                        <option value="Quarta">Quarta</option>
-                        <option value="Quinta">Quinta</option>
-                        <option value="Sexta">Sexta</option>
-                        <option value="Sabado">Sabado</option>
-                        <option value="Domingo">Domingo</option>
+                    <label>Dia</label>
+                    <select id="c-day" name="dayOfWeek">
+                        <option value="">Nenhum</option>
+                        <option>Segunda</option><option>Terca</option><option>Quarta</option>
+                        <option>Quinta</option><option>Sexta</option><option>Sabado</option><option>Domingo</option>
                     </select>
                 </div>
             </div>
             <div class="form-group">
-                <label for="create-plan-desc">Descricao</label>
-                <textarea id="create-plan-desc" name="description" placeholder="Objetivo ou observacoes..." rows="2"></textarea>
+                <label>Descricao</label>
+                <textarea id="c-desc" name="description" rows="2" placeholder="Objetivo do plano..."></textarea>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" onclick="closeModal('modal-create-plan')">Cancelar</button>
-                <button type="submit" class="btn btn-primary" id="btn-create-plan">Criar Plano</button>
+                <button type="button" class="btn btn-secondary" onclick="closeModal('modal-create')">Cancelar</button>
+                <button type="submit" class="btn btn-primary" id="btn-create">Criar Plano</button>
             </div>
         </form>
     </div>
 </div>
 
-<!-- MODAL: EDITAR PLANO -->
-<div class="modal-backdrop" id="modal-edit-plan" onclick="closeModal('modal-edit-plan')">
-    <div class="modal-content" onclick="event.stopPropagation()">
+<!-- MODAL: EDITAR PLANO + EXERCICIOS -->
+<div class="modal-backdrop modal-wide" id="modal-edit" onclick="closeModal('modal-edit')">
+    <div class="modal-content modal-content-wide" onclick="event.stopPropagation()">
         <div class="modal-header">
-            <h2>Editar Plano</h2>
-            <button class="modal-close" onclick="closeModal('modal-edit-plan')">&times;</button>
+            <h2 id="edit-modal-title">Editar Plano</h2>
+            <button class="modal-close" onclick="closeModal('modal-edit')">&times;</button>
         </div>
-        <form id="editPlanForm" onsubmit="submitEditPlan(event)">
+
+        <!-- Dados do Plano -->
+        <form onsubmit="submitEdit(event)" style="margin-bottom: 0;">
+            <input type="hidden" id="e-id">
             <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-            <input type="hidden" id="edit-plan-id" name="planId">
             <div class="form-row">
                 <div class="form-group">
-                    <label for="edit-plan-name">Nome do Plano *</label>
-                    <input type="text" id="edit-plan-name" name="name" required>
+                    <label>Nome *</label>
+                    <input type="text" id="e-name" required>
                 </div>
                 <div class="form-group">
-                    <label for="edit-plan-day">Dia da Semana</label>
-                    <select id="edit-plan-day" name="dayOfWeek">
+                    <label>Dia</label>
+                    <select id="e-day">
                         <option value="">Nenhum</option>
-                        <option value="Segunda">Segunda</option>
-                        <option value="Terca">Terca</option>
-                        <option value="Quarta">Quarta</option>
-                        <option value="Quinta">Quinta</option>
-                        <option value="Sexta">Sexta</option>
-                        <option value="Sabado">Sabado</option>
-                        <option value="Domingo">Domingo</option>
+                        <option>Segunda</option><option>Terca</option><option>Quarta</option>
+                        <option>Quinta</option><option>Sexta</option><option>Sabado</option><option>Domingo</option>
                     </select>
                 </div>
             </div>
             <div class="form-group">
-                <label for="edit-plan-desc">Descricao</label>
-                <textarea id="edit-plan-desc" name="description" rows="2"></textarea>
+                <label>Descricao</label>
+                <textarea id="e-desc" rows="2"></textarea>
             </div>
             <div class="form-group">
                 <label class="label-checkbox">
-                    <input type="checkbox" id="edit-plan-active" name="isActive" value="true">
-                    <span>Plano ativo (aparece na lista de treinos)</span>
+                    <input type="checkbox" id="e-active" value="true">
+                    <span>Plano ativo</span>
                 </label>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" onclick="closeModal('modal-edit-plan')">Cancelar</button>
-                <button type="submit" class="btn btn-primary">Salvar Alteracoes</button>
+            <div style="display:flex; gap:8px; padding-top: 8px;">
+                <button type="submit" class="btn btn-primary btn-sm">Salvar Plano</button>
             </div>
         </form>
+
+        <div class="modal-divider"></div>
+
+        <!-- Exercicios do Plano -->
+        <div class="modal-exercises-section">
+            <div class="modal-exercises-header">
+                <span class="exercises-section-label">EXERCICIOS</span>
+            </div>
+            <div id="modal-exercises-list"></div>
+
+            <!-- Formulario adicionar exercicio -->
+            <details class="add-exercise-details" id="add-ex-details">
+                <summary class="add-exercise-summary">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    Adicionar Exercicio
+                </summary>
+                <div class="add-exercise-body">
+                    <form id="form-add-ex" onsubmit="submitAddEx(event)">
+                        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                        <div class="form-grid-3">
+                            <div class="form-group">
+                                <label>Nome *</label>
+                                <input type="text" id="ax-name" name="name" placeholder="ex: Supino" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Series *</label>
+                                <input type="number" id="ax-sets" name="sets" placeholder="4" min="1" max="20" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Reps *</label>
+                                <input type="text" id="ax-reps" name="reps" placeholder="8-12" required>
+                            </div>
+                        </div>
+                        <div class="form-grid-3">
+                            <div class="form-group">
+                                <label>Carga</label>
+                                <input type="text" id="ax-weight" name="weight" placeholder="60kg">
+                            </div>
+                            <div class="form-group">
+                                <label>Descanso (seg)</label>
+                                <input type="number" id="ax-rest" name="restSeconds" placeholder="60" min="0">
+                            </div>
+                            <div class="form-group">
+                                <label>Notas</label>
+                                <input type="text" id="ax-notes" name="notes" placeholder="Dicas...">
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-sm">Adicionar</button>
+                    </form>
+                </div>
+            </details>
+        </div>
     </div>
 </div>
 
 <!-- MODAL: EDITAR EXERCICIO -->
-<div class="modal-backdrop" id="modal-edit-exercise" onclick="closeModal('modal-edit-exercise')">
+<div class="modal-backdrop" id="modal-edit-ex" onclick="closeModal('modal-edit-ex')">
     <div class="modal-content" onclick="event.stopPropagation()">
         <div class="modal-header">
             <h2>Editar Exercicio</h2>
-            <button class="modal-close" onclick="closeModal('modal-edit-exercise')">&times;</button>
+            <button class="modal-close" onclick="closeModal('modal-edit-ex')">&times;</button>
         </div>
-        <form id="editExerciseForm" onsubmit="submitEditExercise(event)">
-            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-            <input type="hidden" id="edit-ex-id" name="exerciseId">
-            <input type="hidden" id="edit-ex-plan-id" name="planId">
+        <form onsubmit="submitEditEx(event)">
+            <input type="hidden" id="ex-id">
+            <input type="hidden" id="ex-plan-id">
             <div class="form-row">
                 <div class="form-group" style="flex:2">
-                    <label for="edit-ex-name">Nome *</label>
-                    <input type="text" id="edit-ex-name" name="name" required>
+                    <label>Nome *</label>
+                    <input type="text" id="ex-name" required>
                 </div>
                 <div class="form-group">
-                    <label for="edit-ex-sets">Series *</label>
-                    <input type="number" id="edit-ex-sets" name="sets" min="1" max="20" required>
+                    <label>Series *</label>
+                    <input type="number" id="ex-sets" min="1" max="20" required>
                 </div>
                 <div class="form-group">
-                    <label for="edit-ex-reps">Repeticoes *</label>
-                    <input type="text" id="edit-ex-reps" name="reps" required>
+                    <label>Reps *</label>
+                    <input type="text" id="ex-reps" required>
                 </div>
             </div>
             <div class="form-row">
                 <div class="form-group">
-                    <label for="edit-ex-weight">Carga</label>
-                    <input type="text" id="edit-ex-weight" name="weight">
+                    <label>Carga</label>
+                    <input type="text" id="ex-weight">
                 </div>
                 <div class="form-group">
-                    <label for="edit-ex-rest">Descanso (seg)</label>
-                    <input type="number" id="edit-ex-rest" name="restSeconds" min="0">
+                    <label>Descanso (seg)</label>
+                    <input type="number" id="ex-rest" min="0">
                 </div>
             </div>
             <div class="form-group">
-                <label for="edit-ex-notes">Notas</label>
-                <textarea id="edit-ex-notes" name="notes" rows="2" placeholder="Dicas tecnicas..."></textarea>
+                <label>Notas</label>
+                <textarea id="ex-notes" rows="2"></textarea>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" onclick="closeModal('modal-edit-exercise')">Cancelar</button>
+                <button type="button" class="btn btn-secondary" onclick="closeModal('modal-edit-ex')">Cancelar</button>
                 <button type="submit" class="btn btn-primary">Salvar</button>
             </div>
         </form>
@@ -252,43 +226,101 @@
 
 <script>
 const _csrf = document.querySelector('meta[name="csrf-token"]').content;
+let _currentPlanId = null;
 
-function openModal(id) {
-    document.getElementById(id).classList.add('active');
-    document.body.style.overflow = 'hidden';
-}
-function closeModal(id) {
-    document.getElementById(id).classList.remove('active');
-    document.body.style.overflow = '';
-}
-document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') document.querySelectorAll('.modal-backdrop.active').forEach(m => { m.classList.remove('active'); document.body.style.overflow = ''; });
-});
+// --- Modals ---
+function openModal(id) { document.getElementById(id).classList.add('active'); document.body.style.overflow = 'hidden'; }
+function closeModal(id) { document.getElementById(id).classList.remove('active'); document.body.style.overflow = ''; }
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { document.querySelectorAll('.modal-backdrop.active').forEach(m => m.classList.remove('active')); document.body.style.overflow = ''; }});
 
-function showToast(message, type = 'info') {
-    let container = document.querySelector('.toast-container');
-    if (!container) { container = document.createElement('div'); container.className = 'toast-container'; document.body.appendChild(container); }
-    const toast = document.createElement('div');
-    toast.className = 'toast toast-' + type;
-    toast.textContent = message;
-    container.appendChild(toast);
-    requestAnimationFrame(() => toast.classList.add('show'));
-    setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 400); }, 3500);
+// --- Toast ---
+function toast(msg, type = 'info') {
+    let c = document.querySelector('.toast-container');
+    if (!c) { c = document.createElement('div'); c.className = 'toast-container'; document.body.appendChild(c); }
+    const t = document.createElement('div');
+    t.className = 'toast toast-' + type;
+    t.textContent = msg;
+    c.appendChild(t);
+    requestAnimationFrame(() => t.classList.add('show'));
+    setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 400); }, 3500);
 }
 
-function esc(str) { return String(str || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'"); }
-
-async function loadExercises(planId) {
-    const container = document.getElementById('exercises-' + planId);
+// --- Criar Plano ---
+function openCreateModal() {
+    document.querySelector('#modal-create form').reset();
+    openModal('modal-create');
+    document.getElementById('c-name').focus();
+}
+async function submitCreate(e) {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const btn = document.getElementById('btn-create');
+    btn.disabled = true; btn.textContent = 'Criando...';
     try {
-        const res = await fetch('/workouts/plans/' + planId + '/exercises');
-        const data = await res.json();
-        if (!data.success || data.exercises.length === 0) {
-            container.innerHTML = '<p class="no-exercises-msg">Nenhum exercicio adicionado ainda</p>';
+        const r = await fetch('/workouts/plans', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': _csrf }, body: JSON.stringify({ name: fd.get('name'), description: fd.get('description') || null, dayOfWeek: fd.get('dayOfWeek') || null }) });
+        const d = await r.json();
+        if (d.success) { toast('Plano criado!', 'success'); closeModal('modal-create'); setTimeout(() => location.reload(), 1200); }
+        else toast(d.message || 'Erro', 'error');
+    } catch(_) { toast('Erro de conexao', 'error'); }
+    finally { btn.disabled = false; btn.textContent = 'Criar Plano'; }
+}
+
+// --- Editar Plano ---
+function openEditModal(id, name, day, desc, isActive) {
+    _currentPlanId = id;
+    document.getElementById('e-id').value = id;
+    document.getElementById('e-name').value = name;
+    document.getElementById('e-day').value = day || '';
+    document.getElementById('e-desc').value = desc || '';
+    document.getElementById('e-active').checked = isActive;
+    document.getElementById('edit-modal-title').textContent = name;
+    document.getElementById('add-ex-details').removeAttribute('open');
+    document.getElementById('form-add-ex').reset();
+    loadExercises(id);
+    openModal('modal-edit');
+    document.getElementById('e-name').focus();
+}
+async function submitEdit(e) {
+    e.preventDefault();
+    const id = document.getElementById('e-id').value;
+    const body = {
+        name: document.getElementById('e-name').value,
+        description: document.getElementById('e-desc').value || null,
+        dayOfWeek: document.getElementById('e-day').value || null,
+        isActive: document.getElementById('e-active').checked
+    };
+    try {
+        const r = await fetch('/workouts/plans/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': _csrf }, body: JSON.stringify(body) });
+        const d = await r.json();
+        if (d.success) { toast('Plano atualizado!', 'success'); setTimeout(() => location.reload(), 1200); }
+        else toast(d.message || 'Erro', 'error');
+    } catch(_) { toast('Erro de conexao', 'error'); }
+}
+
+// --- Deletar Plano ---
+async function deletePlan(id, name) {
+    if (!confirm('Deletar "' + name + '"? Os exercicios serao removidos.')) return;
+    try {
+        const r = await fetch('/workouts/plans/' + id, { method: 'DELETE', headers: { 'X-CSRF-Token': _csrf } });
+        const d = await r.json();
+        if (d.success) { toast('Plano deletado!', 'success'); setTimeout(() => location.reload(), 1000); }
+        else toast(d.message || 'Erro', 'error');
+    } catch(_) { toast('Erro de conexao', 'error'); }
+}
+
+// --- Listar Exercicios ---
+async function loadExercises(planId) {
+    const list = document.getElementById('modal-exercises-list');
+    list.innerHTML = '<p class="exercises-loading">Carregando...</p>';
+    try {
+        const r = await fetch('/workouts/plans/' + planId + '/exercises');
+        const d = await r.json();
+        if (!d.success || d.exercises.length === 0) {
+            list.innerHTML = '<p class="no-exercises-msg">Nenhum exercicio ainda</p>';
             return;
         }
-        container.innerHTML = data.exercises.map(function(ex, i) {
-            return '<div class="exercise-row" id="exercise-row-' + ex.id + '">' +
+        list.innerHTML = d.exercises.map(function(ex, i) {
+            return '<div class="exercise-row" id="exrow-' + ex.id + '">' +
                 '<div class="exercise-row-number">' + (i+1) + '</div>' +
                 '<div class="exercise-row-info">' +
                     '<span class="exercise-row-name">' + ex.name + '</span>' +
@@ -300,134 +332,68 @@ async function loadExercises(planId) {
                     '</div>' +
                 '</div>' +
                 '<div class="exercise-row-actions">' +
-                    '<button class="btn-icon" title="Editar" onclick="openEditExerciseModal(' + ex.id + ',' + planId + ',\'' + esc(ex.name) + '\',' + ex.sets + ',\'' + esc(ex.reps) + '\',\'' + esc(ex.weight||'') + '\',' + (ex.restSeconds||0) + ',\'' + esc(ex.notes||'') + '\')">' +
-                        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>' +
+                    '<button class="btn-icon" onclick="openEditExModal(' + ex.id + ',' + planId + ',\'' + esc(ex.name) + '\',' + ex.sets + ',\'' + esc(ex.reps) + '\',\'' + esc(ex.weight||'') + '\',' + (ex.restSeconds||0) + ',\'' + esc(ex.notes||'') + '\')" title="Editar">' +
+                        '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>' +
                     '</button>' +
-                    '<button class="btn-icon btn-icon-danger" title="Deletar" onclick="deleteExercise(' + ex.id + ',' + planId + ',\'' + esc(ex.name) + '\')">' +
-                        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>' +
+                    '<button class="btn-icon btn-icon-danger" onclick="deleteEx(' + ex.id + ', \'' + esc(ex.name) + '\')" title="Deletar">' +
+                        '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>' +
                     '</button>' +
                 '</div>' +
             '</div>';
         }).join('');
-    } catch (err) {
-        container.innerHTML = '<p class="error-msg">Erro ao carregar exercicios</p>';
-    }
+    } catch(_) { list.innerHTML = '<p class="error-msg">Erro ao carregar</p>'; }
 }
 
-async function updateExerciseCount(planId) {
-    try {
-        const res = await fetch('/workouts/plans/' + planId + '/exercises');
-        const data = await res.json();
-        const badge = document.getElementById('exercise-count-' + planId);
-        if (badge && data.success) badge.textContent = data.exercises.length + ' exerc.';
-    } catch(_) {}
-}
+function esc(s) { return String(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
 
-function openCreatePlanModal() {
-    document.getElementById('createPlanForm').reset();
-    openModal('modal-create-plan');
-    document.getElementById('create-plan-name').focus();
-}
-
-async function submitCreatePlan(e) {
+// --- Adicionar Exercicio ---
+async function submitAddEx(e) {
     e.preventDefault();
     const fd = new FormData(e.target);
-    const btn = document.getElementById('btn-create-plan');
-    btn.disabled = true; btn.textContent = 'Criando...';
-    try {
-        const res = await fetch('/workouts/plans', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': _csrf }, body: JSON.stringify({ name: fd.get('name'), description: fd.get('description')||null, dayOfWeek: fd.get('dayOfWeek')||null }) });
-        const data = await res.json();
-        if (data.success) { showToast('Plano criado com sucesso!', 'success'); closeModal('modal-create-plan'); setTimeout(() => location.reload(), 1200); }
-        else showToast(data.message || 'Erro ao criar plano', 'error');
-    } catch(_) { showToast('Erro de conexao', 'error'); }
-    finally { btn.disabled = false; btn.textContent = 'Criar Plano'; }
-}
-
-function openEditPlanModal(id, name, day, desc, isActive) {
-    document.getElementById('edit-plan-id').value = id;
-    document.getElementById('edit-plan-name').value = name;
-    document.getElementById('edit-plan-day').value = day || '';
-    document.getElementById('edit-plan-desc').value = desc || '';
-    document.getElementById('edit-plan-active').checked = isActive;
-    openModal('modal-edit-plan');
-    document.getElementById('edit-plan-name').focus();
-}
-
-async function submitEditPlan(e) {
-    e.preventDefault();
-    const fd = new FormData(e.target);
-    const planId = fd.get('planId');
-    try {
-        const res = await fetch('/workouts/plans/' + planId, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': _csrf }, body: JSON.stringify({ name: fd.get('name'), description: fd.get('description')||null, dayOfWeek: fd.get('dayOfWeek')||null, isActive: fd.get('isActive') === 'true' }) });
-        const data = await res.json();
-        if (data.success) { showToast('Plano atualizado!', 'success'); closeModal('modal-edit-plan'); setTimeout(() => location.reload(), 1200); }
-        else showToast(data.message || 'Erro ao atualizar', 'error');
-    } catch(_) { showToast('Erro de conexao', 'error'); }
-}
-
-async function deletePlan(planId, planName) {
-    if (!confirm('Deletar o plano "' + planName + '"?\n\nTodos os exercicios serao removidos.')) return;
-    try {
-        const res = await fetch('/workouts/plans/' + planId, { method: 'DELETE', headers: { 'X-CSRF-Token': _csrf } });
-        const data = await res.json();
-        if (data.success) { showToast('Plano deletado!', 'success'); setTimeout(() => location.reload(), 1000); }
-        else showToast(data.message || 'Erro ao deletar', 'error');
-    } catch(_) { showToast('Erro de conexao', 'error'); }
-}
-
-async function submitAddExercise(e, planId) {
-    e.preventDefault();
-    const form = e.target;
-    const fd = new FormData(form);
-    const btn = form.querySelector('button[type="submit"]');
+    const btn = e.target.querySelector('[type="submit"]');
     btn.disabled = true;
     try {
-        const res = await fetch('/workouts/plans/' + planId + '/exercises', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': _csrf }, body: JSON.stringify({ name: fd.get('name'), sets: fd.get('sets'), reps: fd.get('reps'), weight: fd.get('weight')||null, restSeconds: fd.get('restSeconds')||null, notes: fd.get('notes')||null }) });
-        const data = await res.json();
-        if (data.success) { showToast('Exercicio adicionado!', 'success'); form.reset(); form.closest('details').removeAttribute('open'); await loadExercises(planId); updateExerciseCount(planId); }
-        else showToast(data.message || 'Erro ao adicionar', 'error');
-    } catch(_) { showToast('Erro de conexao', 'error'); }
+        const r = await fetch('/workouts/plans/' + _currentPlanId + '/exercises', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': _csrf }, body: JSON.stringify({ name: fd.get('name'), sets: fd.get('sets'), reps: fd.get('reps'), weight: fd.get('weight')||null, restSeconds: fd.get('restSeconds')||null, notes: fd.get('notes')||null }) });
+        const d = await r.json();
+        if (d.success) { toast('Exercicio adicionado!', 'success'); e.target.reset(); document.getElementById('add-ex-details').removeAttribute('open'); loadExercises(_currentPlanId); }
+        else toast(d.message || 'Erro', 'error');
+    } catch(_) { toast('Erro de conexao', 'error'); }
     finally { btn.disabled = false; }
 }
 
-function openEditExerciseModal(id, planId, name, sets, reps, weight, rest, notes) {
-    document.getElementById('edit-ex-id').value = id;
-    document.getElementById('edit-ex-plan-id').value = planId;
-    document.getElementById('edit-ex-name').value = name;
-    document.getElementById('edit-ex-sets').value = sets;
-    document.getElementById('edit-ex-reps').value = reps;
-    document.getElementById('edit-ex-weight').value = weight || '';
-    document.getElementById('edit-ex-rest').value = rest || '';
-    document.getElementById('edit-ex-notes').value = notes || '';
-    openModal('modal-edit-exercise');
-    document.getElementById('edit-ex-name').focus();
+// --- Editar Exercicio ---
+function openEditExModal(id, planId, name, sets, reps, weight, rest, notes) {
+    document.getElementById('ex-id').value = id;
+    document.getElementById('ex-plan-id').value = planId;
+    document.getElementById('ex-name').value = name;
+    document.getElementById('ex-sets').value = sets;
+    document.getElementById('ex-reps').value = reps;
+    document.getElementById('ex-weight').value = weight || '';
+    document.getElementById('ex-rest').value = rest || '';
+    document.getElementById('ex-notes').value = notes || '';
+    openModal('modal-edit-ex');
 }
-
-async function submitEditExercise(e) {
+async function submitEditEx(e) {
     e.preventDefault();
-    const fd = new FormData(e.target);
-    const exId = fd.get('exerciseId');
-    const planId = fd.get('planId');
+    const id = document.getElementById('ex-id').value;
+    const planId = document.getElementById('ex-plan-id').value;
+    const body = { name: document.getElementById('ex-name').value, sets: document.getElementById('ex-sets').value, reps: document.getElementById('ex-reps').value, weight: document.getElementById('ex-weight').value||null, restSeconds: document.getElementById('ex-rest').value||null, notes: document.getElementById('ex-notes').value||null };
     try {
-        const res = await fetch('/workouts/exercises/' + exId, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': _csrf }, body: JSON.stringify({ name: fd.get('name'), sets: fd.get('sets'), reps: fd.get('reps'), weight: fd.get('weight')||null, restSeconds: fd.get('restSeconds')||null, notes: fd.get('notes')||null }) });
-        const data = await res.json();
-        if (data.success) { showToast('Exercicio atualizado!', 'success'); closeModal('modal-edit-exercise'); await loadExercises(planId); }
-        else showToast(data.message || 'Erro ao atualizar', 'error');
-    } catch(_) { showToast('Erro de conexao', 'error'); }
+        const r = await fetch('/workouts/exercises/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': _csrf }, body: JSON.stringify(body) });
+        const d = await r.json();
+        if (d.success) { toast('Exercicio atualizado!', 'success'); closeModal('modal-edit-ex'); loadExercises(planId); }
+        else toast(d.message || 'Erro', 'error');
+    } catch(_) { toast('Erro de conexao', 'error'); }
 }
 
-async function deleteExercise(exId, planId, name) {
-    if (!confirm('Deletar o exercicio "' + name + '"?')) return;
+// --- Deletar Exercicio ---
+async function deleteEx(id, name) {
+    if (!confirm('Deletar "' + name + '"?')) return;
     try {
-        const res = await fetch('/workouts/exercises/' + exId, { method: 'DELETE', headers: { 'X-CSRF-Token': _csrf } });
-        const data = await res.json();
-        if (data.success) { showToast('Exercicio deletado!', 'success'); await loadExercises(planId); updateExerciseCount(planId); }
-        else showToast(data.message || 'Erro ao deletar', 'error');
-    } catch(_) { showToast('Erro de conexao', 'error'); }
+        const r = await fetch('/workouts/exercises/' + id, { method: 'DELETE', headers: { 'X-CSRF-Token': _csrf } });
+        const d = await r.json();
+        if (d.success) { toast('Deletado!', 'success'); loadExercises(_currentPlanId); }
+        else toast(d.message || 'Erro', 'error');
+    } catch(_) { toast('Erro de conexao', 'error'); }
 }
-
-document.addEventListener('DOMContentLoaded', function() {
-    var planIds = <%- JSON.stringify(plans.map(function(p){ return p.id; })) %>;
-    planIds.forEach(function(id) { loadExercises(id); });
-});
 </script>

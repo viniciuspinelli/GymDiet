@@ -2177,7 +2177,7 @@ tbody td {
    ======================== */
 
 .plans-page {
-    max-width: 900px;
+    max-width: 760px;
     margin: 0 auto;
 }
 
@@ -2187,53 +2187,54 @@ tbody td {
     align-items: flex-end;
 }
 
-.plans-list {
+/* Simple Plan List */
+.plans-simple-list {
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 8px;
 }
 
-.plan-card {
+.plan-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 16px 20px;
     background-color: var(--bg-secondary);
     border: 1px solid var(--border-default);
     border-radius: var(--radius-md);
-    overflow: hidden;
     box-shadow: var(--shadow-sm);
     transition: border-color 200ms ease;
 }
 
-.plan-card:hover {
+.plan-row:hover {
     border-color: rgba(249, 115, 22, 0.35);
 }
 
-.plan-card-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    padding: 18px 20px;
-    gap: 16px;
-    border-bottom: 1px solid var(--border-subtle);
-}
-
-.plan-card-info {
+.plan-row-info {
     flex: 1;
     min-width: 0;
-}
-
-.plan-card-title-row {
     display: flex;
     align-items: center;
+    gap: 12px;
     flex-wrap: wrap;
-    gap: 10px;
-    margin-bottom: 6px;
 }
 
-.plan-card-name {
-    font-size: 16px;
-    font-weight: 700;
+.plan-row-name {
+    font-size: 15px;
+    font-weight: 600;
     color: var(--text-primary);
-    margin: 0;
-    letter-spacing: -0.3px;
+    letter-spacing: -0.2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.plan-row-meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
 }
 
 .plan-badges {
@@ -2252,42 +2253,46 @@ tbody td {
     font-weight: 600;
 }
 
-.plan-card-description {
-    font-size: 13px;
-    color: var(--text-secondary);
-    margin: 0;
-    line-height: 1.5;
-}
-
-.plan-card-actions {
+.plan-row-actions {
     display: flex;
     gap: 8px;
     flex-shrink: 0;
 }
 
-/* Exercises Section */
-.plan-exercises-section {
-    padding: 14px 20px 0;
+/* Wide Edit Modal */
+.modal-wide {
+    align-items: flex-start;
+    padding-top: 40px;
 }
 
-.exercises-section-header {
+.modal-content-wide {
+    max-width: 680px;
+    width: 100%;
+    max-height: calc(100vh - 80px);
+    overflow-y: auto;
+}
+
+.modal-divider {
+    border: none;
+    border-top: 1px solid var(--border-default);
+    margin: 20px -28px;
+}
+
+.modal-exercises-section {
+    padding-top: 4px;
+}
+
+.modal-exercises-header {
     margin-bottom: 10px;
 }
 
+/* Exercise Rows */
 .exercises-section-label {
     font-size: 10.5px;
     font-weight: 700;
     color: var(--text-tertiary);
     text-transform: uppercase;
     letter-spacing: 0.6px;
-}
-
-.exercises-dynamic-list {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    min-height: 32px;
-    margin-bottom: 12px;
 }
 
 .exercises-loading {
@@ -2316,12 +2321,11 @@ tbody td {
     padding: 8px 4px;
 }
 
-/* Exercise Row */
 .exercise-row {
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 9px 10px;
+    padding: 9px 8px;
     border-radius: var(--radius-sm);
     transition: background-color 120ms ease;
 }
@@ -2375,7 +2379,7 @@ tbody td {
 .meta-notes {
     color: var(--text-tertiary);
     font-style: italic;
-    max-width: 200px;
+    max-width: 180px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -2394,8 +2398,8 @@ tbody td {
 
 /* Icon Buttons */
 .btn-icon {
-    width: 30px;
-    height: 30px;
+    width: 28px;
+    height: 28px;
     border: 1px solid var(--border-default);
     background-color: var(--bg-tertiary);
     color: var(--text-secondary);
@@ -2419,17 +2423,17 @@ tbody td {
     color: var(--status-error);
 }
 
-/* Add Exercise Details/Summary */
+/* Add Exercise inside modal */
 .add-exercise-details {
     border-top: 1px solid var(--border-subtle);
-    margin: 0 -20px;
+    margin-top: 8px;
 }
 
 .add-exercise-summary {
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 12px 20px;
+    padding: 10px 6px;
     cursor: pointer;
     font-size: 13px;
     font-weight: 600;
@@ -2437,6 +2441,7 @@ tbody td {
     list-style: none;
     transition: background-color 150ms ease;
     user-select: none;
+    border-radius: var(--radius-sm);
 }
 
 .add-exercise-summary::-webkit-details-marker { display: none; }
@@ -2446,9 +2451,7 @@ tbody td {
 }
 
 .add-exercise-body {
-    padding: 16px 20px 20px;
-    background-color: var(--bg-primary);
-    border-top: 1px solid var(--border-subtle);
+    padding: 14px 0 4px;
 }
 
 .form-grid-3 {
@@ -2456,12 +2459,6 @@ tbody td {
     grid-template-columns: 2fr 1fr 1fr;
     gap: 12px;
     margin-bottom: 12px;
-}
-
-.form-actions-row {
-    display: flex;
-    justify-content: flex-end;
-    padding-top: 4px;
 }
 
 /* Checkbox Label */
@@ -2484,13 +2481,14 @@ tbody td {
 }
 
 @media (max-width: 600px) {
-    .plan-card-header {
+    .plan-row {
         flex-direction: column;
+        align-items: flex-start;
     }
-    .plan-card-actions {
+    .plan-row-actions {
         width: 100%;
     }
-    .plan-card-actions .btn {
+    .plan-row-actions .btn {
         flex: 1;
     }
     .form-grid-3 {
@@ -2498,5 +2496,12 @@ tbody td {
     }
     .exercise-row-actions {
         opacity: 1;
+    }
+    .modal-content-wide {
+        max-height: calc(100vh - 20px);
+    }
+    .modal-wide {
+        padding-top: 10px;
+        align-items: flex-end;
     }
 }
