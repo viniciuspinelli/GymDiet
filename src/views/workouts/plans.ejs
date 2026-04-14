@@ -8,7 +8,7 @@
     <!-- Create New Plan Section -->
     <div class="create-plan-section">
         <h2>Novo Plano de Treino</h2>
-        <form id="createPlanForm" class="plan-form">
+        <form id="createPlanForm" class="plan-form" method="POST" action="/workouts/plans">
             <input type="hidden" name="_csrf" value="<%= csrfToken %>">
             
             <div class="form-row">
@@ -57,13 +57,13 @@
                             <% if (plan.dayOfWeek) { %>
                                 <span class="day-badge">📅 <%= plan.dayOfWeek %></span>
                             <% } %>
-                            <span class="exercise-count">🏋️ <%= plan.exercise_count %> exercício(s)</span>
+                            <span class="exercise-count">🏋️ <%= plan.exercise_count || 0 %> exercício(s)</span>
                         </div>
                         <% if (plan.description) { %>
                             <p class="plan-description"><%= plan.description %></p>
                         <% } %>
                         <div class="plan-actions">
-                            <button class="btn btn-danger btn-sm" onclick="deletePlan(<%= plan.id %>)">
+                            <button class="btn btn-danger btn-sm" onclick="deletePlanConfirm(<%= plan.id %>)">
                                 🗑️ Deletar Plano
                             </button>
                         </div>
@@ -73,14 +73,13 @@
                     <div class="exercises-section">
                         <h4>Exercícios</h4>
                         <div id="exercises-<%= plan.id %>" class="exercises-list">
-                            <!-- Will be populated by JavaScript -->
                             <p class="loading">Carregando exercícios...</p>
                         </div>
 
                         <!-- Add Exercise Form -->
                         <div class="add-exercise-form">
                             <h5>Adicionar Exercício</h5>
-                            <form class="exercise-form" onsubmit="addExercise(event, <%= plan.id %>)">
+                            <form class="exercise-form" id="exerciseForm_<%= plan.id %>" method="POST" action="/workouts/plans/<%= plan.id %>/exercises">
                                 <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                                 
                                 <div class="form-row">
@@ -117,7 +116,7 @@
                                     <textarea name="notes" placeholder="Notas técnicas..." rows="1"></textarea>
                                 </div>
 
-                                <button type="submit" class="btn btn-secondary">
+                                <button type="button" onclick="submitExerciseForm(<%= plan.id %>)" class="btn btn-secondary">
                                     ➕ Adicionar Exercício
                                 </button>
                             </form>
@@ -337,6 +336,7 @@
     margin-top: 5px;
     font-size: 0.9rem;
     color: #64748b;
+    flex-wrap: wrap;
 }
 
 .exercise-meta span {
@@ -461,8 +461,10 @@
 <script>
 // Load exercises when page loads
 document.addEventListener('DOMContentLoaded', function() {
-    const plans = <%= JSON.stringify(plans) %>;
-    plans.forEach(plan => loadExercises(plan.id));
+    const plansData = <%- JSON.stringify(plans) %>;
+    plansData.forEach(plan => {
+        loadExercises(plan.id);
+    });
 });
 
 // Load exercises for a plan
@@ -473,7 +475,7 @@ async function loadExercises(planId) {
         
         const container = document.getElementById(`exercises-${planId}`);
         
-        if (data.exercises.length === 0) {
+        if (!data.success || data.exercises.length === 0) {
             container.innerHTML = '<p class="no-exercises">Nenhum exercício adicionado ainda</p>';
             return;
         }
@@ -490,7 +492,7 @@ async function loadExercises(planId) {
                     </div>
                 </div>
                 <div class="exercise-actions">
-                    <button class="btn btn-danger btn-sm" onclick="deleteExercise(${ex.id})">
+                    <button class="btn btn-danger btn-sm" onclick="deleteExerciseConfirm(${ex.id})">
                         🗑️
                     </button>
                 </div>
@@ -503,7 +505,92 @@ async function loadExercises(planId) {
     }
 }
 
-// Create new plan
+// Submit exercise form
+async function submitExerciseForm(planId) {
+    const form = document.getElementById(`exerciseForm_${planId}`);
+    const formData = new FormData(form);
+    
+    const data = {
+        name: formData.get('name'),
+        sets: formData.get('sets'),
+        reps: formData.get('reps'),
+        weight: formData.get('weight'),
+        restSeconds: formData.get('restSeconds'),
+        notes: formData.get('notes')
+    };
+
+    try {
+        const response = await fetch(`/workouts/plans/${planId}/exercises`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': formData.get('_csrf')
+            },
+            body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            showToast(`Exercício "${data.name}" adicionado! 🏋️`, 'success');
+            form.reset();
+            loadExercises(planId);
+        } else {
+            showToast(result.message || 'Erro ao adicionar exercício', 'error');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showToast('Erro ao adicionar exercício', 'error');
+    }
+}
+
+// Delete exercise with confirmation
+async function deleteExerciseConfirm(exerciseId) {
+    if (!confirm('Tem certeza que deseja deletar este exercício?')) return;
+
+    try {
+        const response = await fetch(`/workouts/exercises/${exerciseId}`, {
+            method: 'DELETE'
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            showToast('Exercício deletado! ✓', 'success');
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            showToast(result.message || 'Erro ao deletar exercício', 'error');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showToast('Erro ao deletar exercício', 'error');
+    }
+}
+
+// Delete plan with confirmation
+async function deletePlanConfirm(planId) {
+    if (!confirm('Tem certeza que deseja deletar este plano? (exercícios associados também serão deletados)')) return;
+
+    try {
+        const response = await fetch(`/workouts/plans/${planId}`, {
+            method: 'DELETE'
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            showToast('Plano deletado! ✓', 'success');
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            showToast(result.message || 'Erro ao deletar plano', 'error');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showToast('Erro ao deletar plano', 'error');
+    }
+}
+
+// Create plan form submission
 document.getElementById('createPlanForm').addEventListener('submit', async function(e) {
     e.preventDefault();
     
@@ -539,93 +626,6 @@ document.getElementById('createPlanForm').addEventListener('submit', async funct
     }
 });
 
-// Add exercise to plan
-async function addExercise(event, planId) {
-    event.preventDefault();
-    
-    const form = event.target;
-    const formData = new FormData(form);
-    const data = {
-        name: formData.get('name'),
-        sets: formData.get('sets'),
-        reps: formData.get('reps'),
-        weight: formData.get('weight'),
-        restSeconds: formData.get('restSeconds'),
-        notes: formData.get('notes')
-    };
-
-    try {
-        const response = await fetch(`/workouts/plans/${planId}/exercises`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-Token': formData.get('_csrf')
-            },
-            body: JSON.stringify(data)
-        });
-
-        const result = await response.json();
-
-        if (result.success) {
-            showToast(`Exercício "${data.name}" adicionado! 🏋️`, 'success');
-            form.reset();
-            loadExercises(planId);
-        } else {
-            showToast(result.message || 'Erro ao adicionar exercício', 'error');
-        }
-    } catch (error) {
-        console.error('Error:', error);
-        showToast('Erro ao adicionar exercício', 'error');
-    }
-}
-
-// Delete exercise
-async function deleteExercise(exerciseId) {
-    if (!confirm('Tem certeza que deseja deletar este exercício?')) return;
-
-    try {
-        const response = await fetch(`/workouts/exercises/${exerciseId}`, {
-            method: 'DELETE'
-        });
-
-        const result = await response.json();
-
-        if (result.success) {
-            showToast('Exercício deletado! ✓', 'success');
-            // Reload the page to refresh the list
-            setTimeout(() => location.reload(), 1000);
-        } else {
-            showToast(result.message || 'Erro ao deletar exercício', 'error');
-        }
-    } catch (error) {
-        console.error('Error:', error);
-        showToast('Erro ao deletar exercício', 'error');
-    }
-}
-
-// Delete plan
-async function deletePlan(planId) {
-    if (!confirm('Tem certeza que deseja deletar este plano? (exercícios associados também serão deletados)')) return;
-
-    try {
-        const response = await fetch(`/workouts/plans/${planId}`, {
-            method: 'DELETE'
-        });
-
-        const result = await response.json();
-
-        if (result.success) {
-            showToast('Plano deletado! ✓', 'success');
-            setTimeout(() => location.reload(), 1000);
-        } else {
-            showToast(result.message || 'Erro ao deletar plano', 'error');
-        }
-    } catch (error) {
-        console.error('Error:', error);
-        showToast('Erro ao deletar plano', 'error');
-    }
-}
-
 // Show toast notification
 function showToast(message, type = 'info') {
     const toast = document.createElement('div');
@@ -641,6 +641,7 @@ function showToast(message, type = 'info') {
         border-radius: 8px;
         z-index: 9999;
         animation: slideIn 0.3s ease-out;
+        font-weight: 600;
     `;
     
     document.body.appendChild(toast);
