@@ -548,21 +548,28 @@ exports.updateExercise = async (req, res, next) => {
 exports.deleteExercise = async (req, res, next) => {
   try {
     const { exerciseId } = req.params;
+    const id = parseInt(exerciseId);
 
     // Check if exercise exists
     const checkResult = await global.db.query(
       'SELECT id FROM "Exercise" WHERE id = $1',
-      [parseInt(exerciseId)]
+      [id]
     );
 
     if (checkResult.rows.length === 0) {
       return res.status(404).json({ success: false, message: 'Exercício não encontrado' });
     }
 
+    // Remove dependent session records first (no ON DELETE CASCADE on this FK)
+    await global.db.query(
+      'DELETE FROM "SessionExercise" WHERE "exerciseId" = $1',
+      [id]
+    );
+
     // Delete the exercise
     await global.db.query(
       'DELETE FROM "Exercise" WHERE id = $1',
-      [parseInt(exerciseId)]
+      [id]
     );
 
     res.json({ success: true });

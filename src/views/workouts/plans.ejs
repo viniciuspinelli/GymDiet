@@ -335,7 +335,7 @@ async function submitAddEx(e, planId) {
 async function deleteEx(id, planId, name) {
     if (!confirm('Deletar "' + name + '"?')) return;
     try {
-        const r = await fetch('/workouts/exercises/' + id, { method: 'DELETE', headers: { 'X-CSRF-Token': _csrf } });
+        const r = await fetch('/workouts/exercises/' + id, { method: 'DELETE', headers: { 'X-CSRF-Token': _csrf, 'Accept': 'application/json' } });
         const d = await r.json();
         if (d.success) { toast('Deletado!', 'success'); loadExercises(planId); }
         else toast(d.message || 'Erro', 'error');
