@@ -1,159 +1,182 @@
-<div class="login-container">
-    <div class="login-box">
-        <div class="login-header">
-            <h1>💪 GymDiet</h1>
-            <p>Seu Assistente de Treinos e Dieta</p>
+<div class="login-page">
+    <div class="login-card">
+        <div class="login-logo">
+            <span class="login-logo-icon">⚡</span>
+            <span class="login-logo-text">GymDiet</span>
         </div>
+        <p class="login-subtitle">Seu Assistente de Treinos e Dieta</p>
 
         <% if (typeof error !== 'undefined' && error) { %>
-            <div class="alert alert-error">
+            <div class="login-alert">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                 <%= error %>
             </div>
         <% } %>
 
         <form method="POST" action="/auth/login" class="login-form">
             <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-            
-            <div class="form-group">
-                <label for="username">Usuário:</label>
-                <input 
-                    type="text" 
-                    id="username" 
-                    name="username" 
-                    placeholder="admin" 
+
+            <div class="login-field">
+                <label for="username">Usuário</label>
+                <input
+                    type="text"
+                    id="username"
+                    name="username"
+                    placeholder="admin"
                     required
                     autofocus
                 >
             </div>
 
-            <div class="form-group">
-                <label for="password">Senha:</label>
-                <input 
-                    type="password" 
-                    id="password" 
-                    name="password" 
-                    placeholder="••••••••" 
+            <div class="login-field">
+                <label for="password">Senha</label>
+                <input
+                    type="password"
+                    id="password"
+                    name="password"
+                    placeholder="••••••••"
                     required
                 >
             </div>
 
-            <button type="submit" class="btn btn-primary btn-block">
+            <button type="submit" class="btn btn-primary login-btn">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
                 Entrar
             </button>
         </form>
 
-        <div class="login-footer">
-            <p>Credenciais de teste: admin / admin123</p>
-        </div>
+        <p class="login-hint">Credenciais de teste: <strong>admin</strong> / <strong>admin123</strong></p>
     </div>
 </div>
 
 <style>
     body {
-        background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+        background-color: var(--bg-primary);
         display: flex;
         justify-content: center;
         align-items: center;
         min-height: 100vh;
-        margin: 0;
         padding: 20px;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
     }
 
-    .login-container {
+    .app-container {
+        display: contents;
+    }
+
+    .login-page {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        width: 100%;
+        min-height: 100vh;
+    }
+
+    .login-card {
         width: 100%;
         max-width: 400px;
+        background-color: var(--bg-secondary);
+        border: 1px solid var(--border-default);
+        border-radius: var(--radius-lg);
+        padding: 40px 36px;
+        box-shadow: var(--shadow-lg);
     }
 
-    .login-box {
-        background: rgba(15, 23, 42, 0.95);
-        border: 1px solid rgba(34, 197, 94, 0.1);
-        border-radius: 12px;
-        padding: 40px;
-        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-        backdrop-filter: blur(10px);
+    .login-logo {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        margin-bottom: 8px;
     }
 
-    .login-header {
+    .login-logo-icon {
+        font-size: 28px;
+        line-height: 1;
+    }
+
+    .login-logo-text {
+        font-size: 26px;
+        font-weight: 700;
+        color: var(--accent-primary);
+        letter-spacing: -0.5px;
+    }
+
+    .login-subtitle {
         text-align: center;
-        margin-bottom: 30px;
+        color: var(--text-tertiary);
+        font-size: 13.5px;
+        margin-bottom: 32px;
     }
 
-    .login-header h1 {
-        font-size: 32px;
-        margin: 0;
-        color: #22c55e;
-    }
-
-    .login-header p {
-        margin: 10px 0 0 0;
-        color: #94a3b8;
-        font-size: 14px;
+    .login-alert {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 11px 14px;
+        background: var(--status-error-bg);
+        border: 1px solid rgba(239, 68, 68, 0.25);
+        border-radius: var(--radius-sm);
+        color: #FCA5A5;
+        font-size: 13.5px;
+        margin-bottom: 20px;
     }
 
     .login-form {
         display: flex;
         flex-direction: column;
-        gap: 20px;
+        gap: 18px;
     }
 
-    .form-group {
+    .login-field {
         display: flex;
         flex-direction: column;
-        gap: 8px;
+        gap: 6px;
     }
 
-    .form-group label {
-        color: #cbd5e1;
+    .login-field label {
+        color: var(--text-secondary);
         font-weight: 500;
-        font-size: 14px;
+        font-size: 13px;
     }
 
-    .form-group input {
-        padding: 12px;
-        background: rgba(30, 41, 59, 0.5);
-        border: 1px solid rgba(148, 163, 184, 0.2);
-        border-radius: 6px;
-        color: #e2e8f0;
+    .login-field input {
+        padding: 10px 13px;
+        background-color: var(--bg-tertiary);
+        border: 1px solid var(--border-default);
+        border-radius: var(--radius-sm);
+        color: var(--text-primary);
         font-size: 14px;
-        transition: all 0.3s ease;
-    }
-
-    .form-group input:focus {
+        font-family: 'Inter', sans-serif;
+        transition: border-color 140ms ease, box-shadow 140ms ease;
         outline: none;
-        border-color: #22c55e;
-        background: rgba(30, 41, 59, 0.8);
-        box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1);
     }
 
-    .btn-block {
+    .login-field input::placeholder {
+        color: var(--text-disabled);
+    }
+
+    .login-field input:focus {
+        border-color: var(--accent-primary);
+        box-shadow: 0 0 0 3px var(--accent-glow);
+        background-color: var(--bg-hover);
+    }
+
+    .login-btn {
         width: 100%;
-        padding: 12px;
-        font-size: 16px;
-        font-weight: 600;
-        border: none;
-        border-radius: 6px;
-        cursor: pointer;
-        transition: all 0.3s ease;
+        margin-top: 6px;
+        padding: 11px 20px;
+        font-size: 14.5px;
     }
 
-    .alert {
-        padding: 12px;
-        border-radius: 6px;
-        margin-bottom: 20px;
-        font-size: 14px;
-    }
-
-    .alert-error {
-        background: rgba(240, 82, 82, 0.1);
-        border: 1px solid rgba(240, 82, 82, 0.3);
-        color: #fca5a5;
-    }
-
-    .login-footer {
+    .login-hint {
         text-align: center;
         margin-top: 20px;
-        color: #64748b;
-        font-size: 13px;
+        color: var(--text-disabled);
+        font-size: 12.5px;
+    }
+
+    .login-hint strong {
+        color: var(--text-tertiary);
+        font-weight: 600;
     }
 </style>
