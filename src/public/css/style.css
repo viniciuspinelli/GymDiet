@@ -2454,6 +2454,50 @@ tbody td {
     padding: 14px 0 4px;
 }
 
+/* Inline Exercise Edit */
+.exercise-inline-edit {
+    width: 100%;
+    padding: 10px 8px;
+    background-color: var(--bg-tertiary);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-accent);
+}
+
+.inline-edit-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.inline-input {
+    flex: 1 1 80px;
+    min-width: 70px;
+    padding: 7px 10px;
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-size: 13px;
+    font-family: 'Inter', sans-serif;
+    outline: none;
+    transition: border-color 140ms ease, box-shadow 140ms ease;
+}
+
+.inline-input:focus {
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 2px var(--accent-glow);
+}
+
+.inline-input-wide {
+    flex: 2 1 160px;
+}
+
+.inline-edit-actions {
+    display: flex;
+    gap: 8px;
+}
+
 .form-grid-3 {
     display: grid;
     grid-template-columns: 2fr 1fr 1fr;
