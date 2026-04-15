@@ -2054,6 +2054,10 @@ tbody td {
         padding-bottom: 80px;
     }
     
+    .bottom-nav {
+        display: flex;
+    }
+    
     .page-title {
         display: block;
     }
