@@ -74,8 +74,18 @@
     const sessionId = '<%= session.id %>';
     const csrfToken = '<%= csrfToken %>';
     const totalExercises = <%= totalCount %>;
-    let startTime = new Date();
     let timerInterval = null;
+
+    // Persistir startTime no localStorage por sessionId
+    const storageKey = 'workout_start_' + sessionId;
+    let savedStart = localStorage.getItem(storageKey);
+    let startTime;
+    if (savedStart) {
+        startTime = new Date(parseInt(savedStart, 10));
+    } else {
+        startTime = new Date();
+        localStorage.setItem(storageKey, startTime.getTime().toString());
+    }
 
     // 🔧 Timer com cleanup para evitar memory leak
     function startTimer() {
@@ -87,11 +97,6 @@
                 String(minutes).padStart(2, '0') + ':' + String(seconds).padStart(2, '0');
         }, 1000);
     }
-
-    // Limpar timer ao sair da página
-    window.addEventListener('beforeunload', () => {
-        if (timerInterval) clearInterval(timerInterval);
-    });
 
     startTimer();
 
@@ -170,6 +175,7 @@
             
             if (data.success) {
                 if (timerInterval) clearInterval(timerInterval); // 🔧 Limpar timer antes de sair
+                localStorage.removeItem(storageKey); // Limpar tempo salvo
                 showToast('Treino finalizado com sucesso! 🎉', 'success');
                 setTimeout(() => window.location.href = '/workouts', 1500);
             } else {
