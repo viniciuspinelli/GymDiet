@@ -95,9 +95,6 @@
                                             <th>Alimento</th>
                                             <th>Quantidade</th>
                                             <th>Calorias</th>
-                                            <th>Proteína</th>
-                                            <th>Carbos</th>
-                                            <th>Gordura</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -111,9 +108,6 @@
                                                 </td>
                                                 <td class="quantity-cell"><%= food.quantity %></td>
                                                 <td><%= food.calories ? food.calories + ' kcal' : '—' %></td>
-                                                <td><%= food.protein ? food.protein.toFixed(1) + 'g' : '—' %></td>
-                                                <td><%= food.carbs ? food.carbs.toFixed(1) + 'g' : '—' %></td>
-                                                <td><%= food.fat ? food.fat.toFixed(1) + 'g' : '—' %></td>
                                             </tr>
                                         <% }); %>
                                     </tbody>
@@ -314,7 +308,14 @@
 
 .meals-container {
     display: grid;
+    grid-template-columns: repeat(2, 1fr);
     gap: 20px;
+}
+
+@media (max-width: 700px) {
+    .meals-container {
+        grid-template-columns: 1fr;
+    }
 }
 
 .meal-card {
