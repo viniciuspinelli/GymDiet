@@ -315,6 +315,129 @@ async function initializeDatabase() {
   }
 }
 
+// ========================
+// DIET SEED
+// ========================
+
+const DIET_SEED = {
+  name: 'Dieta Ganho de Massa - Vinicius',
+  meals: [
+    {
+      name: 'Refeição 1',
+      time: null,
+      order: 1,
+      foods: [
+        { name: 'Ovo inteiro', quantity: '2 unidades', calories: 143, protein: 12.6, carbs: 0.7, fat: 9.9 },
+        { name: 'Pão de forma integral', quantity: '50g (2 fatias)', calories: 127, protein: 4.6, carbs: 23.0, fat: 1.8 },
+        { name: 'Banana', quantity: '100g', calories: 89, protein: 1.1, carbs: 23.0, fat: 0.3 },
+        { name: 'Mamão', quantity: '100g', calories: 43, protein: 0.5, carbs: 10.8, fat: 0.3 },
+        { name: 'Aveia', quantity: '40g', calories: 155, protein: 5.6, carbs: 27.0, fat: 2.8 },
+      ],
+    },
+    {
+      name: 'Refeição 2',
+      time: null,
+      order: 2,
+      foods: [
+        { name: 'Arroz branco', quantity: '250g', calories: 325, protein: 6.0, carbs: 71.5, fat: 0.5 },
+        { name: 'Feijão', quantity: '80g', calories: 77, protein: 4.8, carbs: 13.7, fat: 0.5 },
+        { name: 'Cenoura', quantity: '100g', calories: 41, protein: 0.9, carbs: 9.6, fat: 0.2 },
+        { name: 'Frango/Patinho/Filé suíno/Tilápia', quantity: '120g / 115g / 150g / 170g', calories: 185, protein: 35.0, carbs: 0, fat: 4.0 },
+        { name: 'Salada', quantity: 'à vontade', calories: 0, protein: 0, carbs: 0, fat: 0 },
+      ],
+    },
+    {
+      name: 'Refeição 3',
+      time: null,
+      order: 3,
+      foods: [
+        { name: 'Tapioca', quantity: '70g', calories: 243, protein: 0.3, carbs: 60.0, fat: 0.1 },
+        { name: 'Frango desfiado ou Patinho', quantity: '40g / 35g', calories: 65, protein: 12.3, carbs: 0, fat: 1.5 },
+        { name: 'Queijo muçarela', quantity: '1 fatia', calories: 72, protein: 5.0, carbs: 0.6, fat: 5.5 },
+        { name: 'Tomate', quantity: 'à vontade', calories: 0, protein: 0, carbs: 0, fat: 0 },
+        { name: 'Alface', quantity: 'à vontade', calories: 0, protein: 0, carbs: 0, fat: 0 },
+      ],
+    },
+    {
+      name: 'Refeição 4',
+      time: null,
+      order: 4,
+      foods: [
+        { name: 'Arroz branco', quantity: '200g', calories: 260, protein: 4.8, carbs: 57.2, fat: 0.4 },
+        { name: 'Cenoura', quantity: '100g', calories: 41, protein: 0.9, carbs: 9.6, fat: 0.2 },
+        { name: 'Frango/Patinho/Filé suíno/Tilápia', quantity: '120g / 115g / 150g / 170g', calories: 185, protein: 35.0, carbs: 0, fat: 4.0 },
+      ],
+    },
+    {
+      name: 'Refeição 5',
+      time: null,
+      order: 5,
+      foods: [],
+    },
+    {
+      name: 'Refeição 6',
+      time: null,
+      order: 6,
+      foods: [],
+    },
+  ],
+};
+
+async function seedDiet() {
+  const client = await pool.connect();
+  try {
+    console.log('🥗 Verificando seed de dieta...');
+
+    // Check if plan already exists
+    const existing = await client.query(
+      'SELECT id FROM "MealPlan" WHERE name = $1',
+      [DIET_SEED.name]
+    );
+
+    if (existing.rows.length > 0) {
+      console.log(`  ✔ Plano de dieta já existe: "${DIET_SEED.name}"`);
+      return;
+    }
+
+    // Create the meal plan (active)
+    const planResult = await client.query(
+      `INSERT INTO "MealPlan" (name, "isActive") VALUES ($1, true) RETURNING id`,
+      [DIET_SEED.name]
+    );
+    const planId = planResult.rows[0].id;
+    console.log(`  ✅ Plano de dieta criado: "${DIET_SEED.name}"`);
+
+    for (const meal of DIET_SEED.meals) {
+      const mealResult = await client.query(
+        `INSERT INTO "Meal" ("mealPlanId", name, time, "order") VALUES ($1, $2, $3, $4) RETURNING id`,
+        [planId, meal.name, meal.time, meal.order]
+      );
+      const mealId = mealResult.rows[0].id;
+
+      let foodOrder = 0;
+      for (const food of meal.foods) {
+        foodOrder += 1;
+        await client.query(
+          `INSERT INTO "MealFood" ("mealId", name, quantity, calories, protein, carbs, fat, "order")
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+          [mealId, food.name, food.quantity, food.calories, food.protein, food.carbs, food.fat, foodOrder]
+        );
+        console.log(`    ➕ ${meal.name} → "${food.name}" (${food.quantity})`);
+      }
+    }
+
+    console.log('✅ Seed de dieta concluído!');
+  } catch (err) {
+    console.error('⚠️ Erro no seed de dieta:', err.message);
+  } finally {
+    client.release();
+  }
+}
+
+// ========================
+// WORKOUT SEED
+// ========================
+
 const REST_SECONDS = 45;
 
 const WORKOUT_SEED = [
@@ -427,6 +550,7 @@ async function seedWorkouts() {
 async function start() {
   try {
     await initializeDatabase();
+    await seedDiet();
     await seedWorkouts();
     
     app.listen(PORT, () => {
