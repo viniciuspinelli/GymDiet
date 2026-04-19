@@ -275,8 +275,8 @@ exports.importFromDiet = async (req, res, next) => {
     const importedItems = [];
     for (const food of foodsResult.rows) {
       const result = await global.db.query(
-        `INSERT INTO "ShoppingItem" ("shoppingListId", name, quantity, category, "isChecked", "createdAt")
-         VALUES ($1, $2, $3, $4, false, NOW())
+        `INSERT INTO "ShoppingItem" ("shoppingListId", name, quantity, category, "isChecked")
+         VALUES ($1, $2, $3, $4, false)
          RETURNING *`,
         [listId, food.name, food.quantity, 'Outros']
       );
