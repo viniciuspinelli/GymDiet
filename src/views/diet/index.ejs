@@ -98,12 +98,11 @@
                                             <th>Proteína</th>
                                             <th>Carbos</th>
                                             <th>Gordura</th>
-                                            <th></th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         <% meal.foods.forEach(food => { %>
-                                            <tr data-food-id="<%= food.id %>">
+                                            <tr>
                                                 <td>
                                                     <strong><%= food.name %></strong>
                                                     <% if (food.notes) { %>
@@ -115,9 +114,6 @@
                                                 <td><%= food.protein ? food.protein.toFixed(1) + 'g' : '—' %></td>
                                                 <td><%= food.carbs ? food.carbs.toFixed(1) + 'g' : '—' %></td>
                                                 <td><%= food.fat ? food.fat.toFixed(1) + 'g' : '—' %></td>
-                                                <td>
-                                                    <button class="btn-delete btn-sm" onclick="deleteFood(<%= food.id %>)">✕</button>
-                                                </td>
                                             </tr>
                                         <% }); %>
                                     </tbody>
@@ -127,64 +123,7 @@
                             <% } %>
                         </div>
 
-                        <!-- Add Food Form -->
-                        <form class="add-food-form" onsubmit="addFood(event, <%= meal.id %>)">
-                            <h4>Adicionar Alimento</h4>
-                            <div class="form-row">
-                                <div class="form-group flex-2">
-                                    <label>Nome do Alimento *</label>
-                                    <input type="text" placeholder="ex: Frango, Arroz, Brócolis..." required class="food-name">
-                                </div>
-                                
-                                <div class="form-group">
-                                    <label>Quantidade *</label>
-                                    <input type="number" placeholder="100" min="1" step="0.1" required class="food-quantity">
-                                </div>
 
-                                <div class="form-group">
-                                    <label>Unidade *</label>
-                                    <select required class="food-unit">
-                                        <option value="">Selecione...</option>
-                                        <option value="g">Gramas (g)</option>
-                                        <option value="un">Unidades</option>
-                                        <option value="ml">Mililitros (ml)</option>
-                                        <option value="xícara">Xícara</option>
-                                        <option value="colher">Colher de sopa</option>
-                                        <option value="fatia">Fatia</option>
-                                        <option value="prato">Prato</option>
-                                    </select>
-                                </div>
-                            </div>
-
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label>Calorias</label>
-                                    <input type="number" placeholder="0" min="0" step="0.1" class="food-calories">
-                                </div>
-
-                                <div class="form-group">
-                                    <label>Proteína (g)</label>
-                                    <input type="number" placeholder="0" min="0" step="0.1" class="food-protein">
-                                </div>
-
-                                <div class="form-group">
-                                    <label>Carbos (g)</label>
-                                    <input type="number" placeholder="0" min="0" step="0.1" class="food-carbs">
-                                </div>
-
-                                <div class="form-group">
-                                    <label>Gordura (g)</label>
-                                    <input type="number" placeholder="0" min="0" step="0.1" class="food-fat">
-                                </div>
-                            </div>
-
-                            <div class="form-group">
-                                <label>Notas</label>
-                                <input type="text" placeholder="ex: Cozido sem óleo, com limão..." class="food-notes-input">
-                            </div>
-
-                            <button type="submit" class="btn btn-success">➕ Adicionar Alimento</button>
-                        </form>
                     </div>
                 <% }); %>
             <% } else { %>

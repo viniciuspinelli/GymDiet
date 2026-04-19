@@ -39,12 +39,16 @@ exports.getDiet = async (req, res, next) => {
 
       for (const meal of meals) {
         const foodsResult = await global.db.query(
-          `SELECT calories, protein, carbs, fat FROM "MealFood" WHERE "mealId" = $1 ORDER BY "order" ASC`,
+          `SELECT id, name, quantity, notes, calories, protein, carbs, fat FROM "MealFood" WHERE "mealId" = $1 ORDER BY "order" ASC`,
           [meal.id]
         );
 
         // Convert food values to numbers to prevent .toFixed() errors
         const foods = foodsResult.rows.map(food => ({
+          id: food.id,
+          name: food.name,
+          quantity: food.quantity,
+          notes: food.notes,
           calories: parseFloat(food.calories || 0),
           protein: parseFloat(food.protein || 0),
           carbs: parseFloat(food.carbs || 0),
