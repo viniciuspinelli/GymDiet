@@ -315,10 +315,119 @@ async function initializeDatabase() {
   }
 }
 
+const REST_SECONDS = 45;
+
+const WORKOUT_SEED = [
+  {
+    name: 'Peito e Biceps',
+    description: 'Treino de peito e bíceps | 45s descanso',
+    order: 1,
+    exercises: [
+      { name: 'Supino inclinado c/ halter + Crucifixo inclinado', sets: 4, reps: '10', notes: null },
+      { name: 'Supino Reto', sets: 4, reps: '12 / 10 / 10 / 8', notes: 'Progressão de carga' },
+      { name: 'Peck Deck', sets: 4, reps: '15 / 10 / 10 / 10', notes: null },
+      { name: 'Pullover', sets: 3, reps: '15', notes: null },
+      { name: 'Crossover', sets: 4, reps: '10', notes: null },
+      { name: 'Circuito: Rosca simultânea + Rosca martelo + Rosca no banco', sets: 3, reps: '10', notes: null },
+      { name: 'Abdominal + 20min aeróbico', sets: 1, reps: '-', notes: 'Finalização do treino' },
+    ],
+  },
+  {
+    name: 'Costas e Triceps',
+    description: 'Treino de costas e tríceps | 45s descanso',
+    order: 2,
+    exercises: [
+      { name: 'Flexão na barra fixa ou Graviton', sets: 4, reps: 'RM', notes: null },
+      { name: 'Remada curvada c/ barra pegada pronada', sets: 4, reps: '10', notes: null },
+      { name: 'Puxador articulado', sets: 4, reps: '10', notes: null },
+      { name: 'Remada unilateral', sets: 4, reps: '10', notes: null },
+      { name: 'Puxador frente pegada supinada (largura dos ombros)', sets: 4, reps: '10', notes: null },
+      { name: 'Circuito: Testa c/ barra + Coice c/ halter + Francês', sets: 3, reps: '10', notes: null },
+      { name: 'Abdominal + 20min aeróbico', sets: 1, reps: '-', notes: 'Finalização do treino' },
+    ],
+  },
+  {
+    name: 'Ombro e Perna',
+    description: 'Treino de ombro e perna | 45s descanso',
+    order: 3,
+    exercises: [
+      { name: 'Desenvolvimento c/ halter', sets: 4, reps: '15 / 12 / 10 / drop', notes: 'Progressão de carga' },
+      { name: 'Elevação frontal c/ halteres pegada supinada', sets: 4, reps: '10', notes: null },
+      { name: 'Elevação lateral c/ halteres', sets: 4, reps: 'RM + 10 parciais', notes: null },
+      { name: 'Remada alta no cross c/ corda', sets: 4, reps: '10', notes: null },
+      { name: 'Cadeira extensora', sets: 3, reps: '20', notes: null },
+      { name: 'Agachamento Smith', sets: 4, reps: '12', notes: null },
+      { name: 'Leg 45 + Agachamento livre', sets: 4, reps: '10', notes: null },
+      { name: 'Cadeira flexora', sets: 4, reps: '12', notes: null },
+      { name: 'Stiff', sets: 4, reps: '10', notes: null },
+      { name: 'Cadeira adutora + Abdutora', sets: 4, reps: '15', notes: null },
+    ],
+  },
+];
+
+async function seedWorkouts() {
+  const client = await pool.connect();
+  try {
+    console.log('🌱 Verificando seed de treinos...');
+
+    for (const workout of WORKOUT_SEED) {
+      // Find or create plan
+      const existing = await client.query(
+        'SELECT id FROM "WorkoutPlan" WHERE name = $1',
+        [workout.name]
+      );
+
+      let planId;
+      if (existing.rows.length > 0) {
+        planId = existing.rows[0].id;
+      } else {
+        const ins = await client.query(
+          `INSERT INTO "WorkoutPlan" (name, description, "isActive", "order")
+           VALUES ($1, $2, true, $3) RETURNING id`,
+          [workout.name, workout.description, workout.order]
+        );
+        planId = ins.rows[0].id;
+        console.log(`  ✅ Plano criado: "${workout.name}"`);
+      }
+
+      // Get current max order for exercises in this plan
+      const maxOrd = await client.query(
+        'SELECT COALESCE(MAX("order"), 0) AS mo FROM "Exercise" WHERE "workoutPlanId" = $1',
+        [planId]
+      );
+      let ord = parseInt(maxOrd.rows[0].mo, 10);
+
+      for (const ex of workout.exercises) {
+        const exExists = await client.query(
+          'SELECT id FROM "Exercise" WHERE "workoutPlanId" = $1 AND name = $2',
+          [planId, ex.name]
+        );
+        if (exExists.rows.length > 0) continue;
+
+        ord += 1;
+        await client.query(
+          `INSERT INTO "Exercise" ("workoutPlanId", name, sets, reps, "restSeconds", notes, "order")
+           VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+          [planId, ex.name, ex.sets, ex.reps, REST_SECONDS, ex.notes, ord]
+        );
+        console.log(`    ➕ "${ex.name}" (${ex.sets}x${ex.reps}, ${REST_SECONDS}s)`);
+      }
+    }
+
+    console.log('✅ Seed de treinos concluído!');
+  } catch (err) {
+    console.error('⚠️ Erro no seed de treinos:', err.message);
+    // Non-fatal: app continues
+  } finally {
+    client.release();
+  }
+}
+
 // Start server
 async function start() {
   try {
     await initializeDatabase();
+    await seedWorkouts();
     
     app.listen(PORT, () => {
       console.log(`🚀 GymDiet app running on http://localhost:${PORT}`);
