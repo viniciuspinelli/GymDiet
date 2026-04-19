@@ -264,7 +264,7 @@ exports.importFromDiet = async (req, res, next) => {
 
     // Get all foods from active plan's meals
     const foodsResult = await global.db.query(
-      `SELECT DISTINCT f.name, f.quantity, f.category
+      `SELECT DISTINCT f.name, f.quantity
        FROM "MealFood" f
        JOIN "Meal" m ON f."mealId" = m.id
        WHERE m."mealPlanId" = $1`,
@@ -278,7 +278,7 @@ exports.importFromDiet = async (req, res, next) => {
         `INSERT INTO "ShoppingItem" ("shoppingListId", name, quantity, category, "isChecked", "createdAt")
          VALUES ($1, $2, $3, $4, false, NOW())
          RETURNING *`,
-        [listId, food.name, food.quantity, food.category || 'Outros']
+        [listId, food.name, food.quantity, 'Outros']
       );
       importedItems.push(result.rows[0]);
     }
