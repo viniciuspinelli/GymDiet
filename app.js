@@ -201,6 +201,7 @@ async function initializeDatabase() {
     await client.query(`
       CREATE TABLE IF NOT EXISTS "WorkoutPlan" (
         id SERIAL PRIMARY KEY,
+        "userId" INTEGER REFERENCES "User"(id) ON DELETE CASCADE,
         name VARCHAR(255) NOT NULL,
         description TEXT,
         "dayOfWeek" VARCHAR(50),
@@ -208,6 +209,12 @@ async function initializeDatabase() {
         "isActive" BOOLEAN DEFAULT true,
         "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+    `);
+
+    // Migration: add userId column to existing WorkoutPlan table
+    await client.query(`
+      ALTER TABLE "WorkoutPlan" ADD COLUMN IF NOT EXISTS
+        "userId" INTEGER REFERENCES "User"(id) ON DELETE CASCADE;
     `);
 
     await client.query(`
@@ -254,10 +261,17 @@ async function initializeDatabase() {
     await client.query(`
       CREATE TABLE IF NOT EXISTS "MealPlan" (
         id SERIAL PRIMARY KEY,
+        "userId" INTEGER REFERENCES "User"(id) ON DELETE CASCADE,
         name VARCHAR(255) NOT NULL,
         "isActive" BOOLEAN DEFAULT false,
         "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+    `);
+
+    // Migration: add userId column to existing MealPlan table
+    await client.query(`
+      ALTER TABLE "MealPlan" ADD COLUMN IF NOT EXISTS
+        "userId" INTEGER REFERENCES "User"(id) ON DELETE CASCADE;
     `);
 
     await client.query(`
@@ -288,9 +302,16 @@ async function initializeDatabase() {
     await client.query(`
       CREATE TABLE IF NOT EXISTS "ShoppingList" (
         id SERIAL PRIMARY KEY,
+        "userId" INTEGER REFERENCES "User"(id) ON DELETE CASCADE,
         name VARCHAR(255) DEFAULT 'Lista de Compras',
         "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+    `);
+
+    // Migration: add userId column to existing ShoppingList table
+    await client.query(`
+      ALTER TABLE "ShoppingList" ADD COLUMN IF NOT EXISTS
+        "userId" INTEGER REFERENCES "User"(id) ON DELETE CASCADE;
     `);
 
     await client.query(`
@@ -550,8 +571,6 @@ async function seedWorkouts() {
 async function start() {
   try {
     await initializeDatabase();
-    await seedDiet();
-    await seedWorkouts();
     
     app.listen(PORT, () => {
       console.log(`🚀 GymDiet app running on http://localhost:${PORT}`);

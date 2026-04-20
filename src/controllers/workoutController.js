@@ -7,9 +7,10 @@ exports.getWorkouts = async (req, res, next) => {
   try {
     const userId = req.session.user.id;
 
-    // Get all active workout plans
+    // Get all active workout plans for this user
     const plansResult = await global.db.query(
-      'SELECT id, name, description, "isActive", "order" FROM "WorkoutPlan" WHERE "isActive" = true ORDER BY "order" ASC'
+      'SELECT id, name, description, "isActive", "order", "dayOfWeek" FROM "WorkoutPlan" WHERE "isActive" = true AND "userId" = $1 ORDER BY "order" ASC',
+      [userId]
     );
 
     // Get total completed sessions for user
@@ -58,10 +59,10 @@ exports.startWorkout = async (req, res, next) => {
     const { id: planId } = req.params;
     const userId = req.session.user.id;
 
-    // Verify workout plan exists
+    // Verify workout plan exists and belongs to user
     const planResult = await global.db.query(
-      'SELECT id, name, description FROM "WorkoutPlan" WHERE id = $1',
-      [parseInt(planId)]
+      'SELECT id, name, description FROM "WorkoutPlan" WHERE id = $1 AND "userId" = $2',
+      [parseInt(planId), userId]
     );
 
     if (planResult.rows.length === 0) {
@@ -141,7 +142,7 @@ exports.getActiveWorkout = async (req, res, next) => {
        JOIN "Exercise" e ON se."exerciseId" = e.id
        WHERE se."workoutSessionId" = $1
        ORDER BY e."order" ASC`,
-      [sessionId]
+      [parseInt(sessionId)]
     );
 
     session.sessionExercises = exercisesResult.rows.map(row => ({
@@ -296,7 +297,7 @@ exports.getHistory = async (req, res, next) => {
     const totalSessions = sessions.length;
 
     res.render('workouts/history', {
-      title: 'Histórico',
+      title: 'Histórico de Treinos',
       sessions,
       sessionsByPlan,
       totalSessions,
@@ -349,7 +350,9 @@ exports.deleteSession = async (req, res, next) => {
  */
 exports.getWorkoutPlans = async (req, res, next) => {
   try {
-    // Get all plans with exercise count
+    const userId = req.session.user.id;
+
+    // Get all plans with exercise count for this user
     const result = await global.db.query(`
       SELECT 
         wp.id, 
@@ -361,9 +364,10 @@ exports.getWorkoutPlans = async (req, res, next) => {
         COUNT(e.id) as exercise_count
       FROM "WorkoutPlan" wp
       LEFT JOIN "Exercise" e ON wp.id = e."workoutPlanId"
+      WHERE wp."userId" = $1
       GROUP BY wp.id
       ORDER BY wp."order" ASC
-    `);
+    `, [userId]);
 
     res.render('workouts/plans', {
       title: 'Gerenciar Treinos',
@@ -381,16 +385,17 @@ exports.getWorkoutPlans = async (req, res, next) => {
 exports.createWorkoutPlan = async (req, res, next) => {
   try {
     const { name, description, dayOfWeek } = req.body;
+    const userId = req.session.user.id;
 
     if (!name) {
       return res.status(400).json({ success: false, message: 'Nome é obrigatório' });
     }
 
     const result = await global.db.query(
-      `INSERT INTO "WorkoutPlan" (name, description, "dayOfWeek", "isActive")
-       VALUES ($1, $2, $3, true)
+      `INSERT INTO "WorkoutPlan" ("userId", name, description, "dayOfWeek", "isActive")
+       VALUES ($1, $2, $3, $4, true)
        RETURNING *`,
-      [name, description || null, dayOfWeek || null]
+      [userId, name, description || null, dayOfWeek || null]
     );
 
     res.json({ success: true, plan: result.rows[0] });
@@ -412,15 +417,17 @@ exports.updateWorkoutPlan = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Nome é obrigatório' });
     }
 
+    const userId = req.session.user.id;
+
     const result = await global.db.query(
       `UPDATE "WorkoutPlan" 
        SET name = $1, 
            description = $2,
            "dayOfWeek" = $3,
            "isActive" = $4
-       WHERE id = $5
+       WHERE id = $5 AND "userId" = $6
        RETURNING *`,
-      [name, description || null, dayOfWeek || null, isActive !== undefined ? isActive : true, parseInt(planId)]
+      [name, description || null, dayOfWeek || null, isActive !== undefined ? isActive : true, parseInt(planId), userId]
     );
 
     if (result.rows.length === 0) {
@@ -440,6 +447,16 @@ exports.updateWorkoutPlan = async (req, res, next) => {
 exports.deleteWorkoutPlan = async (req, res, next) => {
   try {
     const { planId } = req.params;
+    const userId = req.session.user.id;
+
+    // Verify plan belongs to user before deleting
+    const planCheck = await global.db.query(
+      'SELECT id FROM "WorkoutPlan" WHERE id = $1 AND "userId" = $2',
+      [parseInt(planId), userId]
+    );
+    if (planCheck.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Plano não encontrado' });
+    }
 
     // Delete associated exercises first (cascade)
     await global.db.query(
@@ -467,12 +484,22 @@ exports.addExercise = async (req, res, next) => {
   try {
     const { planId } = req.params;
     const { name, sets, reps, weight, restSeconds, notes } = req.body;
+    const userId = req.session.user.id;
 
     if (!name || !sets || !reps) {
       return res.status(400).json({ 
         success: false, 
         message: 'Nome, séries e repetições são obrigatórios' 
       });
+    }
+
+    // Verify plan belongs to user
+    const planCheck = await global.db.query(
+      'SELECT id FROM "WorkoutPlan" WHERE id = $1 AND "userId" = $2',
+      [parseInt(planId), userId]
+    );
+    if (planCheck.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Plano não encontrado' });
     }
 
     const result = await global.db.query(
@@ -505,9 +532,21 @@ exports.updateExercise = async (req, res, next) => {
   try {
     const { exerciseId } = req.params;
     const { name, sets, reps, weight, restSeconds, notes } = req.body;
+    const userId = req.session.user.id;
 
     if (!name || !sets || !reps) {
       return res.status(400).json({ success: false, message: 'Nome, séries e repetições são obrigatórios' });
+    }
+
+    // Verify exercise belongs to user's plan
+    const ownerCheck = await global.db.query(
+      `SELECT e.id FROM "Exercise" e
+       JOIN "WorkoutPlan" wp ON e."workoutPlanId" = wp.id
+       WHERE e.id = $1 AND wp."userId" = $2`,
+      [parseInt(exerciseId), userId]
+    );
+    if (ownerCheck.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Exercício não encontrado' });
     }
 
     const result = await global.db.query(
@@ -549,11 +588,14 @@ exports.deleteExercise = async (req, res, next) => {
   try {
     const { exerciseId } = req.params;
     const id = parseInt(exerciseId);
+    const userId = req.session.user.id;
 
-    // Check if exercise exists
+    // Check if exercise exists and belongs to user's plan
     const checkResult = await global.db.query(
-      'SELECT id FROM "Exercise" WHERE id = $1',
-      [id]
+      `SELECT e.id FROM "Exercise" e
+       JOIN "WorkoutPlan" wp ON e."workoutPlanId" = wp.id
+       WHERE e.id = $1 AND wp."userId" = $2`,
+      [id, userId]
     );
 
     if (checkResult.rows.length === 0) {
@@ -585,6 +627,16 @@ exports.deleteExercise = async (req, res, next) => {
 exports.getExercisesForPlan = async (req, res, next) => {
   try {
     const { planId } = req.params;
+    const userId = req.session.user.id;
+
+    // Verify plan belongs to user
+    const planCheck = await global.db.query(
+      'SELECT id FROM "WorkoutPlan" WHERE id = $1 AND "userId" = $2',
+      [parseInt(planId), userId]
+    );
+    if (planCheck.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Plano não encontrado' });
+    }
 
     const result = await global.db.query(
       `SELECT id, name, sets, reps, weight, "restSeconds", notes, "order"

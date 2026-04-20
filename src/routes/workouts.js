@@ -53,4 +53,7 @@ router.post('/session/:sessionId/complete', workoutController.completeWorkout);
 // GET /workouts/history - workout history
 router.get('/history', workoutController.getHistory);
 
+// DELETE /workouts/session/:sessionId - delete a session
+router.delete('/session/:sessionId', workoutController.deleteSession);
+
 module.exports = router;

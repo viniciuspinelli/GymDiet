@@ -4,7 +4,7 @@
             <span class="login-logo-icon">⚡</span>
             <span class="login-logo-text">GymDiet</span>
         </div>
-        <p class="login-subtitle">Seu Assistente de Treinos e Dieta</p>
+        <p class="login-subtitle">Criar Nova Conta</p>
 
         <% if (typeof error !== 'undefined' && error) { %>
             <div class="login-alert">
@@ -13,7 +13,7 @@
             </div>
         <% } %>
 
-        <form method="POST" action="/auth/login" class="login-form">
+        <form method="POST" action="/auth/register" class="login-form">
             <input type="hidden" name="_csrf" value="<%= csrfToken %>">
 
             <div class="login-field">
@@ -22,9 +22,10 @@
                     type="text"
                     id="username"
                     name="username"
-                    placeholder="admin"
+                    placeholder="seunome"
                     required
                     autofocus
+                    maxlength="50"
                 >
             </div>
 
@@ -36,16 +37,29 @@
                     name="password"
                     placeholder="••••••••"
                     required
+                    minlength="6"
+                >
+            </div>
+
+            <div class="login-field">
+                <label for="confirmPassword">Confirmar Senha</label>
+                <input
+                    type="password"
+                    id="confirmPassword"
+                    name="confirmPassword"
+                    placeholder="••••••••"
+                    required
+                    minlength="6"
                 >
             </div>
 
             <button type="submit" class="btn btn-primary login-btn">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
-                Entrar
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+                Criar Conta
             </button>
         </form>
 
-        <p class="login-hint">Não tem conta? <a href="/auth/register" style="color: var(--accent-primary);">Criar conta</a></p>
+        <p class="login-hint">Já tem conta? <a href="/auth/login" style="color: var(--accent-primary);">Entrar</a></p>
     </div>
 </div>
 
@@ -98,26 +112,25 @@
         font-size: 26px;
         font-weight: 700;
         color: var(--accent-primary);
-        letter-spacing: -0.5px;
     }
 
     .login-subtitle {
         text-align: center;
-        color: var(--text-tertiary);
-        font-size: 13.5px;
-        margin-bottom: 32px;
+        color: var(--text-muted);
+        font-size: 14px;
+        margin-bottom: 28px;
     }
 
     .login-alert {
         display: flex;
         align-items: center;
         gap: 8px;
-        padding: 11px 14px;
-        background: var(--status-error-bg);
-        border: 1px solid rgba(239, 68, 68, 0.25);
-        border-radius: var(--radius-sm);
-        color: #FCA5A5;
-        font-size: 13.5px;
+        background-color: rgba(239, 68, 68, 0.1);
+        border: 1px solid rgba(239, 68, 68, 0.3);
+        border-radius: var(--radius-md);
+        color: #ef4444;
+        font-size: 13px;
+        padding: 10px 14px;
         margin-bottom: 20px;
     }
 
@@ -134,49 +147,39 @@
     }
 
     .login-field label {
-        color: var(--text-secondary);
-        font-weight: 500;
         font-size: 13px;
+        font-weight: 500;
+        color: var(--text-secondary);
     }
 
     .login-field input {
-        padding: 10px 13px;
-        background-color: var(--bg-tertiary);
+        padding: 10px 14px;
+        border-radius: var(--radius-md);
         border: 1px solid var(--border-default);
-        border-radius: var(--radius-sm);
+        background-color: var(--bg-tertiary);
         color: var(--text-primary);
         font-size: 14px;
-        font-family: 'Inter', sans-serif;
-        transition: border-color 140ms ease, box-shadow 140ms ease;
-        outline: none;
-    }
-
-    .login-field input::placeholder {
-        color: var(--text-disabled);
+        font-family: inherit;
+        transition: border-color 0.15s;
     }
 
     .login-field input:focus {
+        outline: none;
         border-color: var(--accent-primary);
-        box-shadow: 0 0 0 3px var(--accent-glow);
-        background-color: var(--bg-hover);
     }
 
     .login-btn {
         width: 100%;
-        margin-top: 6px;
-        padding: 11px 20px;
-        font-size: 14.5px;
+        justify-content: center;
+        margin-top: 4px;
+        padding: 11px;
+        font-size: 14px;
     }
 
     .login-hint {
         text-align: center;
+        font-size: 13px;
+        color: var(--text-muted);
         margin-top: 20px;
-        color: var(--text-disabled);
-        font-size: 12.5px;
-    }
-
-    .login-hint strong {
-        color: var(--text-tertiary);
-        font-weight: 600;
     }
 </style>

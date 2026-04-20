@@ -86,6 +86,90 @@ exports.postLogin = async (req, res, next) => {
 };
 
 /**
+ * Display register page
+ */
+exports.getRegister = (req, res) => {
+  if (req.session.user) {
+    return res.redirect('/workouts');
+  }
+  const csrfToken = req.csrfToken ? req.csrfToken() : '';
+  res.render('auth/register', {
+    title: 'Criar Conta',
+    csrfToken,
+  });
+};
+
+/**
+ * Handle register submission
+ */
+exports.postRegister = async (req, res, next) => {
+  try {
+    const { username, password, confirmPassword } = req.body;
+    const csrfToken = req.csrfToken ? req.csrfToken() : '';
+
+    if (!username || !password || !confirmPassword) {
+      return res.status(400).render('auth/register', {
+        title: 'Criar Conta',
+        error: 'Todos os campos são obrigatórios',
+        csrfToken,
+      });
+    }
+
+    if (password !== confirmPassword) {
+      return res.status(400).render('auth/register', {
+        title: 'Criar Conta',
+        error: 'As senhas não coincidem',
+        csrfToken,
+      });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).render('auth/register', {
+        title: 'Criar Conta',
+        error: 'A senha deve ter pelo menos 6 caracteres',
+        csrfToken,
+      });
+    }
+
+    const existing = await global.db.query(
+      'SELECT id FROM "User" WHERE username = $1',
+      [username]
+    );
+
+    if (existing.rows.length > 0) {
+      return res.status(400).render('auth/register', {
+        title: 'Criar Conta',
+        error: 'Nome de usuário já está em uso',
+        csrfToken,
+      });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 12);
+    const result = await global.db.query(
+      'INSERT INTO "User" (username, password) VALUES ($1, $2) RETURNING id, username',
+      [username, hashedPassword]
+    );
+
+    const user = result.rows[0];
+    req.session.user = { id: user.id, username: user.username };
+
+    req.session.save((err) => {
+      if (err) {
+        console.error('Session save error:', err);
+        return res.status(500).render('error', {
+          title: 'Erro',
+          message: 'Erro ao criar sessão',
+        });
+      }
+      res.redirect('/workouts');
+    });
+  } catch (error) {
+    console.error('Register error:', error);
+    next(error);
+  }
+};
+
+/**
  * Handle logout
  */
 exports.getLogout = (req, res, next) => {

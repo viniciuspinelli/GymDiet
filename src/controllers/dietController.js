@@ -5,24 +5,29 @@
  */
 exports.getDiet = async (req, res, next) => {
   try {
-    // Get active meal plan
+    const userId = req.session.user.id;
+
+    // Get active meal plan for this user
     let activePlanResult = await global.db.query(
-      `SELECT id, name, "isActive" FROM "MealPlan" WHERE "isActive" = true LIMIT 1`
+      `SELECT id, name, "isActive" FROM "MealPlan" WHERE "isActive" = true AND "userId" = $1 LIMIT 1`,
+      [userId]
     );
 
     let activePlan = activePlanResult.rows[0] || null;
 
-    // If no active plan, get the first one
+    // If no active plan, get the first one for this user
     if (!activePlan) {
       const firstResult = await global.db.query(
-        `SELECT id, name, "isActive" FROM "MealPlan" LIMIT 1`
+        `SELECT id, name, "isActive" FROM "MealPlan" WHERE "userId" = $1 LIMIT 1`,
+        [userId]
       );
       activePlan = firstResult.rows[0] || null;
     }
 
-    // Get all plans for switching
+    // Get all plans for this user for switching
     const allPlansResult = await global.db.query(
-      `SELECT id, name, "isActive" FROM "MealPlan" ORDER BY "createdAt" DESC`
+      `SELECT id, name, "isActive" FROM "MealPlan" WHERE "userId" = $1 ORDER BY "createdAt" DESC`,
+      [userId]
     );
     const allPlans = allPlansResult.rows;
 
@@ -95,16 +100,17 @@ exports.getDiet = async (req, res, next) => {
 exports.createMealPlan = async (req, res, next) => {
   try {
     const { name } = req.body;
+    const userId = req.session.user.id;
 
     if (!name) {
       return res.status(400).json({ success: false, message: 'Nome é obrigatório' });
     }
 
     const result = await global.db.query(
-      `INSERT INTO "MealPlan" (name, "isActive", "createdAt")
-       VALUES ($1, false, NOW())
+      `INSERT INTO "MealPlan" ("userId", name, "isActive", "createdAt")
+       VALUES ($1, $2, false, NOW())
        RETURNING id, name, "isActive"`,
-      [name]
+      [userId, name]
     );
 
     res.json({ success: true, plan: result.rows[0] });
@@ -120,10 +126,21 @@ exports.createMealPlan = async (req, res, next) => {
 exports.activateMealPlan = async (req, res, next) => {
   try {
     const { planId } = req.params;
+    const userId = req.session.user.id;
 
-    // Deactivate all other plans
+    // Verify plan belongs to user
+    const planCheck = await global.db.query(
+      'SELECT id FROM "MealPlan" WHERE id = $1 AND "userId" = $2',
+      [parseInt(planId), userId]
+    );
+    if (planCheck.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Plano não encontrado' });
+    }
+
+    // Deactivate all other plans for this user
     await global.db.query(
-      `UPDATE "MealPlan" SET "isActive" = false WHERE "isActive" = true`
+      `UPDATE "MealPlan" SET "isActive" = false WHERE "isActive" = true AND "userId" = $1`,
+      [userId]
     );
 
     // Activate selected plan
@@ -145,9 +162,19 @@ exports.activateMealPlan = async (req, res, next) => {
 exports.addMeal = async (req, res, next) => {
   try {
     const { mealPlanId, name, time } = req.body;
+    const userId = req.session.user.id;
 
     if (!name) {
       return res.status(400).json({ success: false, message: 'Nome é obrigatório' });
+    }
+
+    // Verify plan belongs to user
+    const planCheck = await global.db.query(
+      'SELECT id FROM "MealPlan" WHERE id = $1 AND "userId" = $2',
+      [parseInt(mealPlanId), userId]
+    );
+    if (planCheck.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Plano não encontrado' });
     }
 
     const result = await global.db.query(
@@ -170,6 +197,18 @@ exports.addMeal = async (req, res, next) => {
 exports.deleteMeal = async (req, res, next) => {
   try {
     const { mealId } = req.params;
+    const userId = req.session.user.id;
+
+    // Verify meal belongs to user's plan
+    const ownerCheck = await global.db.query(
+      `SELECT m.id FROM "Meal" m
+       JOIN "MealPlan" mp ON m."mealPlanId" = mp.id
+       WHERE m.id = $1 AND mp."userId" = $2`,
+      [parseInt(mealId), userId]
+    );
+    if (ownerCheck.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Refeição não encontrada' });
+    }
 
     // Delete foods first
     await global.db.query(
@@ -196,6 +235,18 @@ exports.deleteMeal = async (req, res, next) => {
 exports.addFood = async (req, res, next) => {
   try {
     const { mealId, name, quantity, calories, protein, carbs, fat, notes } = req.body;
+    const userId = req.session.user.id;
+
+    // Verify meal belongs to user's plan
+    const ownerCheck = await global.db.query(
+      `SELECT m.id FROM "Meal" m
+       JOIN "MealPlan" mp ON m."mealPlanId" = mp.id
+       WHERE m.id = $1 AND mp."userId" = $2`,
+      [parseInt(mealId), userId]
+    );
+    if (ownerCheck.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Refeição não encontrada' });
+    }
 
     // 🔧 Validação de nome
     if (!name || typeof name !== 'string' || name.trim().length < 2) {
@@ -292,6 +343,19 @@ exports.addFood = async (req, res, next) => {
 exports.deleteFood = async (req, res, next) => {
   try {
     const { foodId } = req.params;
+    const userId = req.session.user.id;
+
+    // Verify food belongs to user's plan
+    const ownerCheck = await global.db.query(
+      `SELECT mf.id FROM "MealFood" mf
+       JOIN "Meal" m ON mf."mealId" = m.id
+       JOIN "MealPlan" mp ON m."mealPlanId" = mp.id
+       WHERE mf.id = $1 AND mp."userId" = $2`,
+      [parseInt(foodId), userId]
+    );
+    if (ownerCheck.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Alimento não encontrado' });
+    }
 
     await global.db.query(
       `DELETE FROM "MealFood" WHERE id = $1`,
@@ -312,15 +376,20 @@ exports.updateMealPlanName = async (req, res, next) => {
   try {
     const { planId } = req.params;
     const { name } = req.body;
+    const userId = req.session.user.id;
 
     if (!name) {
       return res.status(400).json({ success: false, message: 'Nome é obrigatório' });
     }
 
     const result = await global.db.query(
-      `UPDATE "MealPlan" SET name = $1 WHERE id = $2 RETURNING *`,
-      [name, parseInt(planId)]
+      `UPDATE "MealPlan" SET name = $1 WHERE id = $2 AND "userId" = $3 RETURNING *`,
+      [name, parseInt(planId), userId]
     );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Plano não encontrado' });
+    }
 
     res.json({ success: true, plan: result.rows[0] });
   } catch (error) {
