@@ -1649,7 +1649,7 @@ tbody td {
     background-color: var(--bg-secondary);
     border: 1px solid var(--border-default);
     border-radius: var(--radius-md);
-    overflow: hidden;
+    overflow: visible;
     box-shadow: var(--shadow-sm);
     transition: border-color 200ms ease;
 }
@@ -1705,13 +1705,15 @@ tbody td {
 }
 
 .foods-table {
-    overflow-x: auto;
     padding: 12px 16px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 .foods-table table {
     width: 100%;
     font-size: 13px;
+    min-width: 280px;
 }
 
 .foods-table th {
@@ -2161,6 +2163,63 @@ tbody td {
 
     .page-header h1 {
         font-size: 18px;
+    }
+
+    /* Responsive food table: convert to card rows on mobile */
+    .foods-table table,
+    .foods-table thead,
+    .foods-table tbody,
+    .foods-table th,
+    .foods-table td,
+    .foods-table tr {
+        display: block;
+    }
+
+    .foods-table thead {
+        display: none;
+    }
+
+    .foods-table tr {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        padding: 10px 0;
+        border-bottom: 1px solid var(--border-subtle);
+        gap: 4px;
+    }
+
+    .foods-table tr:last-child {
+        border-bottom: none;
+    }
+
+    .foods-table td {
+        padding: 0 4px;
+        border: none;
+        font-size: 13px;
+    }
+
+    /* Food name: full width */
+    .foods-table td:nth-child(1) {
+        flex: 1 1 100%;
+        font-size: 13px;
+    }
+
+    /* Quantity: left aligned, small */
+    .foods-table td:nth-child(2) {
+        color: var(--text-tertiary);
+        font-size: 12px;
+    }
+
+    /* Calories: after quantity */
+    .foods-table td:nth-child(3) {
+        color: var(--accent-primary);
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    /* Delete button: push to right */
+    .foods-table td:nth-child(4) {
+        margin-left: auto;
     }
 }
 
