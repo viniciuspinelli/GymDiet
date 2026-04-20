@@ -2221,6 +2221,80 @@ tbody td {
     .foods-table td:nth-child(4) {
         margin-left: auto;
     }
+
+    /* Workouts grid: force single column */
+    .workouts-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    /* Meals container: force single column */
+    .meals-container {
+        grid-template-columns: 1fr !important;
+    }
+
+    /* Selector row: stack vertically */
+    .selector-row {
+        flex-direction: column;
+    }
+    .selector-row select {
+        width: 100%;
+    }
+
+    /* Active workout: timer font size */
+    .timer-display h2 {
+        font-size: 32px;
+    }
+
+    /* Active workout: exercise header stacks */
+    .exercise-header {
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    .exercise-header .btn-complete {
+        width: 100%;
+        justify-content: center;
+    }
+
+    /* History: session stats single column */
+    .session-stats {
+        grid-template-columns: 1fr !important;
+        gap: 4px !important;
+    }
+    .session-stats .stat {
+        border-right: none !important;
+        padding: 6px 0 !important;
+        justify-content: space-between;
+        flex-direction: row;
+    }
+
+    /* Shopping: actions stack vertically */
+    .shopping-actions {
+        flex-direction: column;
+        width: 100%;
+    }
+    .shopping-actions .btn {
+        width: 100%;
+        text-align: center;
+    }
+
+    /* Shopping: add item form stacks */
+    .add-item-section form {
+        flex-direction: column;
+    }
+    .add-item-section input,
+    .add-item-section select {
+        width: 100%;
+        min-width: unset;
+    }
+
+    /* Plans: form grid single column (already at 600px but enforce at 480px too) */
+    .form-grid-3 {
+        grid-template-columns: 1fr !important;
+    }
+    /* Plan row: ensure actions visible on touch */
+    .exercise-row-actions {
+        opacity: 1 !important;
+    }
 }
 
 /* Desktop - Show Sidebar */

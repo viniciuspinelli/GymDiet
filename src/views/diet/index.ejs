@@ -578,6 +578,72 @@
         padding: 15px;
     }
 }
+
+@media (max-width: 480px) {
+    .meals-container {
+        grid-template-columns: 1fr !important;
+    }
+
+    .selector-row {
+        flex-direction: column;
+    }
+    .selector-row select {
+        width: 100%;
+    }
+
+    .form-row {
+        grid-template-columns: 1fr !important;
+        gap: 8px;
+    }
+
+    /* Convert foods table to card rows */
+    .foods-table,
+    .foods-table thead,
+    .foods-table tbody,
+    .foods-table th,
+    .foods-table td,
+    .foods-table tr {
+        display: block;
+    }
+    .foods-table thead {
+        display: none;
+    }
+    .foods-table tr {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        padding: 10px 0;
+        border-bottom: 1px solid #3A3A3A;
+        gap: 4px;
+    }
+    .foods-table tr:last-child {
+        border-bottom: none;
+    }
+    .foods-table td {
+        padding: 0 4px;
+        border: none;
+    }
+    /* Food name: full width */
+    .foods-table td:nth-child(1) {
+        flex: 1 1 100%;
+        font-size: 13px;
+    }
+    /* Quantity */
+    .foods-table td:nth-child(2) {
+        color: #FF6B00;
+        font-size: 12px;
+        font-weight: 600;
+    }
+    /* Calories */
+    .foods-table td:nth-child(3) {
+        color: #A0A0A0;
+        font-size: 12px;
+    }
+    /* Delete button */
+    .foods-table td:nth-child(4) {
+        margin-left: auto;
+    }
+}
 </style>
 
 <script>
