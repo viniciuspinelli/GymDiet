@@ -9,7 +9,7 @@ exports.getDiet = async (req, res, next) => {
 
     // Get active meal plan for this user
     let activePlanResult = await global.db.query(
-      `SELECT id, name, "isActive" FROM "MealPlan" WHERE "isActive" = true AND "userId" = $1 LIMIT 1`,
+      `SELECT id, name, "isActive", "isTemplate" FROM "MealPlan" WHERE "isActive" = true AND "userId" = $1 AND "isTemplate" = false LIMIT 1`,
       [userId]
     );
 
@@ -18,7 +18,7 @@ exports.getDiet = async (req, res, next) => {
     // If no active plan, get the first one for this user
     if (!activePlan) {
       const firstResult = await global.db.query(
-        `SELECT id, name, "isActive" FROM "MealPlan" WHERE "userId" = $1 LIMIT 1`,
+        `SELECT id, name, "isActive", "isTemplate" FROM "MealPlan" WHERE "userId" = $1 AND "isTemplate" = false LIMIT 1`,
         [userId]
       );
       activePlan = firstResult.rows[0] || null;
@@ -26,7 +26,7 @@ exports.getDiet = async (req, res, next) => {
 
     // Get all plans for this user for switching
     const allPlansResult = await global.db.query(
-      `SELECT id, name, "isActive" FROM "MealPlan" WHERE "userId" = $1 ORDER BY "createdAt" DESC`,
+      `SELECT id, name, "isActive", "isTemplate" FROM "MealPlan" WHERE "userId" = $1 AND "isTemplate" = false ORDER BY "createdAt" DESC`,
       [userId]
     );
     const allPlans = allPlansResult.rows;
@@ -86,6 +86,7 @@ exports.getDiet = async (req, res, next) => {
       activePlan,
       allPlans,
       totals,
+      isAdmin: req.session.user.role === 'admin',
       csrfToken: req.csrfToken(),
     });
   } catch (error) {
@@ -394,6 +395,34 @@ exports.updateMealPlanName = async (req, res, next) => {
     res.json({ success: true, plan: result.rows[0] });
   } catch (error) {
     console.error('Error updating meal plan:', error);
+    next(error);
+  }
+};
+
+/**
+ * Mark/unmark a meal plan as template (admin only)
+ */
+exports.toggleTemplate = async (req, res, next) => {
+  try {
+    const { planId } = req.params;
+    const userId = req.session.user.id;
+
+    const planCheck = await global.db.query(
+      'SELECT id, "isTemplate" FROM "MealPlan" WHERE id = $1 AND "userId" = $2',
+      [parseInt(planId), userId]
+    );
+    if (planCheck.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Plano não encontrado' });
+    }
+
+    const newValue = !planCheck.rows[0].isTemplate;
+    await global.db.query(
+      'UPDATE "MealPlan" SET "isTemplate" = $1 WHERE id = $2',
+      [newValue, parseInt(planId)]
+    );
+
+    res.json({ success: true, isTemplate: newValue });
+  } catch (error) {
     next(error);
   }
 };

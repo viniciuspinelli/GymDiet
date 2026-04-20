@@ -31,6 +31,9 @@ router.delete('/exercises/:exerciseId', workoutController.deleteExercise);
 // GET /workouts/plans/:planId/exercises - get exercises for plan (API)
 router.get('/plans/:planId/exercises', workoutController.getExercisesForPlan);
 
+// PATCH /workouts/plans/:planId/toggle-template - toggle template flag (admin)
+router.patch('/plans/:planId/toggle-template', workoutController.toggleTemplate);
+
 // ========================
 // WORKOUT EXECUTION
 // ========================

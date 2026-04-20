@@ -9,7 +9,7 @@ exports.getWorkouts = async (req, res, next) => {
 
     // Get all active workout plans for this user
     const plansResult = await global.db.query(
-      'SELECT id, name, description, "isActive", "order", "dayOfWeek" FROM "WorkoutPlan" WHERE "isActive" = true AND "userId" = $1 ORDER BY "order" ASC',
+      'SELECT id, name, description, "isActive", "order", "dayOfWeek" FROM "WorkoutPlan" WHERE "isActive" = true AND "userId" = $1 AND "isTemplate" = false ORDER BY "order" ASC',
       [userId]
     );
 
@@ -353,6 +353,8 @@ exports.getWorkoutPlans = async (req, res, next) => {
     const userId = req.session.user.id;
 
     // Get all plans with exercise count for this user
+    // Admin sees templates; regular users see only their assigned plans
+    const isAdmin = req.session.user.role === 'admin';
     const result = await global.db.query(`
       SELECT 
         wp.id, 
@@ -361,17 +363,19 @@ exports.getWorkoutPlans = async (req, res, next) => {
         wp."dayOfWeek",
         wp."order",
         wp."isActive",
+        wp."isTemplate",
         COUNT(e.id) as exercise_count
       FROM "WorkoutPlan" wp
       LEFT JOIN "Exercise" e ON wp.id = e."workoutPlanId"
       WHERE wp."userId" = $1
       GROUP BY wp.id
-      ORDER BY wp."order" ASC
+      ORDER BY wp."isTemplate" DESC, wp."order" ASC
     `, [userId]);
 
     res.render('workouts/plans', {
       title: 'Gerenciar Treinos',
       plans: result.rows,
+      isAdmin,
     });
   } catch (error) {
     console.error('Error fetching workout plans:', error);
@@ -649,6 +653,34 @@ exports.getExercisesForPlan = async (req, res, next) => {
     res.json({ success: true, exercises: result.rows });
   } catch (error) {
     console.error('Error fetching exercises:', error);
+    next(error);
+  }
+};
+
+/**
+ * Mark/unmark a workout plan as template (admin only)
+ */
+exports.toggleTemplate = async (req, res, next) => {
+  try {
+    const { planId } = req.params;
+    const userId = req.session.user.id;
+
+    const planCheck = await global.db.query(
+      'SELECT id, "isTemplate" FROM "WorkoutPlan" WHERE id = $1 AND "userId" = $2',
+      [parseInt(planId), userId]
+    );
+    if (planCheck.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Plano não encontrado' });
+    }
+
+    const newValue = !planCheck.rows[0].isTemplate;
+    await global.db.query(
+      'UPDATE "WorkoutPlan" SET "isTemplate" = $1 WHERE id = $2',
+      [newValue, parseInt(planId)]
+    );
+
+    res.json({ success: true, isTemplate: newValue });
+  } catch (error) {
     next(error);
   }
 };

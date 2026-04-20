@@ -61,6 +61,13 @@
                             </div>
                         </div>
                         <div class="plan-row-actions">
+                            <% if (typeof isAdmin !== 'undefined' && isAdmin) { %>
+                            <button class="btn btn-sm <%= plan.isTemplate ? 'btn-primary' : 'btn-secondary' %>" 
+                                    onclick="toggleTemplate(<%= plan.id %>, this)" 
+                                    title="<%= plan.isTemplate ? 'Remover da Biblioteca' : 'Mover para Biblioteca' %>">
+                                <%= plan.isTemplate ? '📚 Biblioteca' : '📋 Tornar Template' %>
+                            </button>
+                            <% } %>
                             <button class="btn btn-secondary btn-sm" id="btn-edit-<%= plan.id %>" onclick="toggleExercises(<%= plan.id %>, '<%= plan.name.replace(/\'/g, `\\'`) %>')">
                                 Editar
                             </button>
@@ -216,6 +223,26 @@ async function deletePlan(id, name) {
         const d = await r.json();
         if (d.success) { toast('Plano deletado!', 'success'); setTimeout(() => location.reload(), 1000); }
         else toast(d.message || 'Erro', 'error');
+    } catch(_) { toast('Erro de conexao', 'error'); }
+}
+
+async function toggleTemplate(id, btn) {
+    try {
+        const r = await fetch('/workouts/plans/' + id + '/toggle-template', { method: 'PATCH', headers: { 'X-CSRF-Token': _csrf } });
+        const d = await r.json();
+        if (d.success) {
+            if (d.isTemplate) {
+                btn.textContent = '📚 Biblioteca';
+                btn.classList.remove('btn-secondary');
+                btn.classList.add('btn-primary');
+                toast('Plano movido para a biblioteca!', 'success');
+            } else {
+                btn.textContent = '📋 Tornar Template';
+                btn.classList.remove('btn-primary');
+                btn.classList.add('btn-secondary');
+                toast('Plano removido da biblioteca', 'success');
+            }
+        } else toast(d.message || 'Erro', 'error');
     } catch(_) { toast('Erro de conexao', 'error'); }
 }
 

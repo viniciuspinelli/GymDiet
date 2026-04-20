@@ -13,7 +13,9 @@ const setupRoutes = require('./src/routes/setup');
 const workoutRoutes = require('./src/routes/workouts');
 const dietRoutes = require('./src/routes/diet');
 const shoppingRoutes = require('./src/routes/shopping');
+const adminRoutes = require('./src/routes/admin');
 const authMiddleware = require('./src/middleware/authMiddleware');
+const adminMiddleware = require('./src/middleware/adminMiddleware');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -137,6 +139,7 @@ app.get('/', async (req, res) => {
 app.use('/workouts', authMiddleware, workoutRoutes);
 app.use('/diet', authMiddleware, dietRoutes);
 app.use('/shopping', authMiddleware, shoppingRoutes);
+app.use('/admin', authMiddleware, adminMiddleware, adminRoutes);
 
 // ========================
 // ERROR HANDLING
@@ -194,6 +197,7 @@ async function initializeDatabase() {
         id SERIAL PRIMARY KEY,
         username VARCHAR(255) UNIQUE NOT NULL,
         password VARCHAR(255) NOT NULL,
+        role VARCHAR(20) DEFAULT 'user',
         "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
@@ -207,6 +211,7 @@ async function initializeDatabase() {
         "dayOfWeek" VARCHAR(50),
         "order" INTEGER DEFAULT 0,
         "isActive" BOOLEAN DEFAULT true,
+        "isTemplate" BOOLEAN DEFAULT false,
         "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
@@ -216,6 +221,16 @@ async function initializeDatabase() {
       ALTER TABLE "WorkoutPlan" ADD COLUMN IF NOT EXISTS
         "userId" INTEGER REFERENCES "User"(id) ON DELETE CASCADE;
     `);
+
+    // Migration: add isTemplate column to WorkoutPlan and MealPlan
+    await client.query(`ALTER TABLE "WorkoutPlan" ADD COLUMN IF NOT EXISTS "isTemplate" BOOLEAN DEFAULT false;`);
+    await client.query(`ALTER TABLE "MealPlan" ADD COLUMN IF NOT EXISTS "isTemplate" BOOLEAN DEFAULT false;`);
+
+    // Migration: add role column to User
+    await client.query(`ALTER TABLE "User" ADD COLUMN IF NOT EXISTS role VARCHAR(20) DEFAULT 'user';`);
+
+    // Migration: set vinicius as admin
+    await client.query(`UPDATE "User" SET role = 'admin' WHERE username = 'vinicius';`);
 
     await client.query(`
       CREATE TABLE IF NOT EXISTS "Exercise" (
@@ -264,6 +279,7 @@ async function initializeDatabase() {
         "userId" INTEGER REFERENCES "User"(id) ON DELETE CASCADE,
         name VARCHAR(255) NOT NULL,
         "isActive" BOOLEAN DEFAULT false,
+        "isTemplate" BOOLEAN DEFAULT false,
         "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);

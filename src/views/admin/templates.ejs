@@ -1,0 +1,85 @@
+<div class="admin-page">
+    <div class="page-header">
+        <div>
+            <h1>📚 Biblioteca de Planos</h1>
+            <p class="page-subtitle">Templates que podem ser atribuídos a qualquer aluno</p>
+        </div>
+    </div>
+
+    <div class="admin-detail-grid">
+        <!-- WORKOUT TEMPLATES -->
+        <div class="admin-detail-section">
+            <div class="admin-section-header">
+                <h2>🏋️ Templates de Treino</h2>
+                <a href="/workouts/plans" class="btn btn-sm btn-primary">➕ Criar Treino</a>
+            </div>
+            <p class="section-hint">
+                Para criar um treino template, vá em <a href="/workouts/plans">Gerenciar Planos</a>, 
+                crie o treino normalmente e depois marque-o como template aqui.
+            </p>
+
+            <% if (workoutTemplates.length > 0) { %>
+                <div class="assigned-plans-list">
+                    <% workoutTemplates.forEach(t => { %>
+                        <div class="assigned-plan-row">
+                            <div class="assigned-plan-info">
+                                <span class="assigned-plan-name"><%= t.name %></span>
+                                <% if (t.dayofweek) { %><span class="plan-badge"><%= t.dayofweek %></span><% } %>
+                                <span class="plan-badge"><%= t.exercise_count %> exercícios</span>
+                            </div>
+                            <button class="btn btn-sm btn-danger" onclick="deleteTemplate('workout', <%= t.id %>, '<%= t.name %>')">🗑️</button>
+                        </div>
+                    <% }); %>
+                </div>
+            <% } else { %>
+                <p class="empty-hint">Nenhum template de treino na biblioteca.</p>
+            <% } %>
+        </div>
+
+        <!-- DIET TEMPLATES -->
+        <div class="admin-detail-section">
+            <div class="admin-section-header">
+                <h2>🥗 Templates de Dieta</h2>
+                <a href="/diet" class="btn btn-sm btn-primary">➕ Criar Dieta</a>
+            </div>
+            <p class="section-hint">
+                Para criar uma dieta template, acesse <a href="/diet">Minha Dieta</a>, 
+                crie o plano e depois mova-o para a biblioteca abaixo.
+            </p>
+
+            <% if (dietTemplates.length > 0) { %>
+                <div class="assigned-plans-list">
+                    <% dietTemplates.forEach(t => { %>
+                        <div class="assigned-plan-row">
+                            <div class="assigned-plan-info">
+                                <span class="assigned-plan-name"><%= t.name %></span>
+                                <span class="plan-badge"><%= t.meal_count %> refeições</span>
+                            </div>
+                            <button class="btn btn-sm btn-danger" onclick="deleteTemplate('diet', <%= t.id %>, '<%= t.name %>')">🗑️</button>
+                        </div>
+                    <% }); %>
+                </div>
+            <% } else { %>
+                <p class="empty-hint">Nenhum template de dieta na biblioteca.</p>
+            <% } %>
+        </div>
+    </div>
+</div>
+
+<script>
+const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+
+async function deleteTemplate(type, id, name) {
+    if (!confirm(`Remover o template "${name}" da biblioteca?`)) return;
+    const url = type === 'workout'
+        ? `/admin/templates/workouts/${id}`
+        : `/admin/templates/diets/${id}`;
+    const res = await fetch(url, {
+        method: 'DELETE',
+        headers: { 'X-CSRF-Token': csrfToken }
+    });
+    const data = await res.json();
+    if (data.success) { showToast('Template removido', 'success'); setTimeout(() => location.reload(), 800); }
+    else showToast(data.message || 'Erro', 'error');
+}
+</script>

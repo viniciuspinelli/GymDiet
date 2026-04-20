@@ -27,4 +27,7 @@ router.post('/meals/:mealId/foods', dietController.addFood);
 // DELETE /diet/foods/:foodId - delete a food
 router.delete('/foods/:foodId', dietController.deleteFood);
 
+// PATCH /diet/plans/:planId/toggle-template - toggle template flag (admin)
+router.patch('/plans/:planId/toggle-template', dietController.toggleTemplate);
+
 module.exports = router;

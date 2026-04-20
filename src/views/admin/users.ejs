@@ -1,0 +1,56 @@
+<div class="admin-page">
+    <div class="page-header">
+        <div>
+            <h1>👥 Gerenciar Alunos</h1>
+            <p class="page-subtitle"><%= users.length %> usuário(s) cadastrado(s)</p>
+        </div>
+        <a href="/admin/users/new" class="btn btn-primary">➕ Novo Aluno</a>
+    </div>
+
+    <div class="admin-users-list">
+        <% users.forEach(u => { %>
+            <div class="admin-user-row">
+                <div class="admin-user-info">
+                    <span class="admin-user-avatar"><%= u.username.charAt(0).toUpperCase() %></span>
+                    <div>
+                        <span class="admin-user-name"><%= u.username %></span>
+                        <span class="admin-user-role <%= u.role === 'admin' ? 'role-admin' : 'role-user' %>">
+                            <%= u.role === 'admin' ? '⚡ Admin' : '👤 Aluno' %>
+                        </span>
+                    </div>
+                </div>
+                <div class="admin-user-actions">
+                    <a href="/admin/users/<%= u.id %>" class="btn btn-sm btn-secondary">Ver Planos</a>
+                    <a href="/admin/users/<%= u.id %>/edit" class="btn btn-sm btn-secondary">✏️ Editar</a>
+                    <% if (u.id !== user.id) { %>
+                        <button class="btn btn-sm btn-danger" onclick="deleteUser(<%= u.id %>, '<%= u.username %>')">🗑️</button>
+                    <% } %>
+                </div>
+            </div>
+        <% }); %>
+
+        <% if (users.length === 0) { %>
+            <div class="empty-state">
+                <p>Nenhum usuário cadastrado ainda.</p>
+                <a href="/admin/users/new" class="btn btn-primary">Criar primeiro aluno</a>
+            </div>
+        <% } %>
+    </div>
+</div>
+
+<script>
+async function deleteUser(id, username) {
+    if (!confirm(`Deletar o usuário "${username}"? Todos os dados serão removidos.`)) return;
+    const res = await fetch(`/admin/users/${id}`, {
+        method: 'DELETE',
+        headers: { 'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content }
+    });
+    const data = await res.json();
+    if (data.success) {
+        showToast(`Usuário ${username} removido`, 'success');
+        setTimeout(() => location.reload(), 800);
+    } else {
+        showToast(data.message || 'Erro ao deletar', 'error');
+    }
+}
+</script>

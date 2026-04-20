@@ -36,7 +36,7 @@ exports.postLogin = async (req, res, next) => {
 
     // Find user by username
     const result = await global.db.query(
-      'SELECT id, username, password FROM "User" WHERE username = $1',
+      'SELECT id, username, password, role FROM "User" WHERE username = $1',
       [username]
     );
 
@@ -67,6 +67,7 @@ exports.postLogin = async (req, res, next) => {
     req.session.user = {
       id: user.id,
       username: user.username,
+      role: user.role || 'user',
     };
 
     req.session.save((err) => {
@@ -146,12 +147,12 @@ exports.postRegister = async (req, res, next) => {
 
     const hashedPassword = await bcrypt.hash(password, 12);
     const result = await global.db.query(
-      'INSERT INTO "User" (username, password) VALUES ($1, $2) RETURNING id, username',
-      [username, hashedPassword]
+      'INSERT INTO "User" (username, password, role) VALUES ($1, $2, $3) RETURNING id, username, role',
+      [username, hashedPassword, 'user']
     );
 
     const user = result.rows[0];
-    req.session.user = { id: user.id, username: user.username };
+    req.session.user = { id: user.id, username: user.username, role: user.role };
 
     req.session.save((err) => {
       if (err) {

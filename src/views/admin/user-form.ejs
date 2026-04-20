@@ -1,0 +1,49 @@
+<div class="admin-page">
+    <div class="page-header">
+        <div>
+            <a href="/admin/users" class="btn-back">← Voltar</a>
+            <h1><%= editUser ? '✏️ Editar Usuário' : '➕ Novo Aluno' %></h1>
+        </div>
+    </div>
+
+    <% if (error) { %>
+        <div class="alert alert-error"><%= error %></div>
+    <% } %>
+
+    <div class="admin-form-card">
+        <form method="POST" action="/admin/users/<%= editUser ? editUser.id + '/edit' : 'new' %>">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+            <div class="form-field">
+                <label for="username">Nome de usuário</label>
+                <input type="text" id="username" name="username"
+                    value="<%= editUser ? editUser.username : '' %>"
+                    placeholder="ex: joao" required>
+            </div>
+
+            <div class="form-field">
+                <label for="password">
+                    Senha <%= editUser ? '<span class="field-hint">(deixe em branco para não alterar)</span>' : '' %>
+                </label>
+                <input type="password" id="password" name="password"
+                    placeholder="••••••••"
+                    <%= editUser ? '' : 'required' %>>
+            </div>
+
+            <div class="form-field">
+                <label for="role">Nível de acesso</label>
+                <select id="role" name="role">
+                    <option value="user" <%= !editUser || editUser.role === 'user' ? 'selected' : '' %>>👤 Aluno</option>
+                    <option value="admin" <%= editUser && editUser.role === 'admin' ? 'selected' : '' %>>⚡ Admin / Instrutor</option>
+                </select>
+            </div>
+
+            <div class="form-actions">
+                <a href="/admin/users" class="btn btn-secondary">Cancelar</a>
+                <button type="submit" class="btn btn-primary">
+                    <%= editUser ? 'Salvar Alterações' : 'Criar Aluno' %>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>

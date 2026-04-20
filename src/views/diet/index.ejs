@@ -11,12 +11,19 @@
             <select id="planSelect" onchange="switchPlan(this.value)">
                 <option value="">Selecione um plano...</option>
                 <% allPlans.forEach(plan => { %>
-                    <option value="<%= plan.id %>" <%= (activePlan && plan.id === activePlan.id) ? 'selected' : '' %>>
-                        <%= plan.name %> <%= plan.isActive ? '(Ativo)' : '' %>
+                    <option value="<%= plan.id %>" data-template="<%= plan.isTemplate ? '1' : '0' %>" <%= (activePlan && plan.id === activePlan.id) ? 'selected' : '' %>>
+                        <%= plan.name %> <%= plan.isTemplate ? '📚' : (plan.isActive ? '(Ativo)' : '') %>
                     </option>
                 <% }); %>
             </select>
             <button class="btn btn-success" onclick="createNewPlan()">➕ Novo Plano</button>
+            <% if (typeof isAdmin !== 'undefined' && isAdmin && activePlan && activePlan.id) { %>
+            <button class="btn btn-secondary btn-sm" id="btn-toggle-template" 
+                    onclick="toggleDietTemplate(<%= activePlan.id %>, this)"
+                    title="<%= activePlan.isTemplate ? 'Remover da Biblioteca' : 'Mover para Biblioteca' %>">
+                <%= activePlan.isTemplate ? '📚 Na Biblioteca' : '📋 Tornar Template' %>
+            </button>
+            <% } %>
         </div>
     </div>
 
@@ -660,6 +667,25 @@
         const input = document.querySelector('input[name="_csrf"]');
         if (input) return input.value;
         throw new Error('CSRF token not found');
+    }
+
+    async function toggleDietTemplate(planId, btn) {
+        try {
+            const r = await fetch('/diet/plans/' + planId + '/toggle-template', {
+                method: 'PATCH',
+                headers: { 'X-CSRF-Token': getCsrfToken() }
+            });
+            const d = await r.json();
+            if (d.success) {
+                if (d.isTemplate) {
+                    btn.textContent = '📚 Na Biblioteca';
+                    showToast('Plano movido para a biblioteca!', 'success');
+                } else {
+                    btn.textContent = '📋 Tornar Template';
+                    showToast('Plano removido da biblioteca', 'success');
+                }
+            } else showToast(d.message || 'Erro', 'error');
+        } catch(_) { showToast('Erro de conexão', 'error'); }
     }
 
     function showAddMealForm() {
