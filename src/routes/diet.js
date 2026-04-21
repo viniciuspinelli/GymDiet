@@ -30,4 +30,7 @@ router.delete('/foods/:foodId', dietController.deleteFood);
 // PATCH /diet/plans/:planId/toggle-template - toggle template flag (admin)
 router.patch('/plans/:planId/toggle-template', dietController.toggleTemplate);
 
+// GET /diet/food-search - search food nutrition (admin only)
+router.get('/food-search', dietController.searchFood);
+
 module.exports = router;

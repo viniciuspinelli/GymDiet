@@ -446,3 +446,90 @@ exports.toggleTemplate = async (req, res, next) => {
     next(error);
   }
 };
+
+// ========================
+// FOOD NUTRITION SEARCH
+// ========================
+
+async function searchUSDA(query) {
+  const apiKey = process.env.USDA_API_KEY || 'DEMO_KEY';
+  const url = `https://api.nal.usda.gov/fdc/v1/foods/search?query=${encodeURIComponent(query)}&api_key=${apiKey}&dataType=Foundation,SR%20Legacy&pageSize=8`;
+
+  const response = await fetch(url, { signal: AbortSignal.timeout(5000) });
+  if (!response.ok) return [];
+
+  const data = await response.json();
+  if (!data.foods || data.foods.length === 0) return [];
+
+  return data.foods.map(food => {
+    const nutrients = {};
+    (food.foodNutrients || []).forEach(n => { nutrients[n.nutrientId] = n.value; });
+    return {
+      name: food.description,
+      calories: Math.round(nutrients[1008] || 0),
+      protein: parseFloat((nutrients[1003] || 0).toFixed(1)),
+      carbs: parseFloat((nutrients[1005] || 0).toFixed(1)),
+      fat: parseFloat((nutrients[1004] || 0).toFixed(1)),
+      source: 'USDA',
+    };
+  }).filter(f => f.name && (f.calories > 0 || f.protein > 0));
+}
+
+async function searchOpenFoodFacts(query) {
+  const url = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}&json=1&page_size=8&fields=product_name,nutriments`;
+
+  const response = await fetch(url, { signal: AbortSignal.timeout(6000) });
+  if (!response.ok) return [];
+
+  const data = await response.json();
+  if (!data.products || data.products.length === 0) return [];
+
+  return data.products
+    .filter(p => p.product_name && p.nutriments)
+    .map(p => ({
+      name: p.product_name,
+      calories: Math.round(p.nutriments['energy-kcal_100g'] || 0),
+      protein: parseFloat((p.nutriments['proteins_100g'] || 0).toFixed(1)),
+      carbs: parseFloat((p.nutriments['carbohydrates_100g'] || 0).toFixed(1)),
+      fat: parseFloat((p.nutriments['fat_100g'] || 0).toFixed(1)),
+      source: 'Open Food Facts',
+    }))
+    .filter(f => f.calories > 0 || f.protein > 0);
+}
+
+exports.searchFood = async (req, res) => {
+  try {
+    if (req.session.user.role !== 'admin') {
+      return res.status(403).json({ success: false, message: 'Acesso negado' });
+    }
+
+    const { q } = req.query;
+    if (!q || q.trim().length < 2) {
+      return res.json({ success: true, results: [] });
+    }
+
+    const query = q.trim();
+
+    // Try USDA first
+    let results = [];
+    try {
+      results = await searchUSDA(query);
+    } catch (e) {
+      console.warn('USDA search failed:', e.message);
+    }
+
+    // Fallback to Open Food Facts
+    if (results.length === 0) {
+      try {
+        results = await searchOpenFoodFacts(query);
+      } catch (e) {
+        console.warn('Open Food Facts search failed:', e.message);
+      }
+    }
+
+    res.json({ success: true, results: results.slice(0, 8) });
+  } catch (error) {
+    console.error('Error searching food:', error);
+    res.json({ success: true, results: [] });
+  }
+};

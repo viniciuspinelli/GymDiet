@@ -141,8 +141,11 @@
                             <form onsubmit="addFood(event, <%= meal.id %>)">
                                 <div class="form-row">
                                     <div class="form-group flex-2">
-                                        <label>Nome *</label>
-                                        <input type="text" class="food-name" placeholder="ex: Frango grelhado" required maxlength="100">
+                                        <label>Nome * <span class="food-search-hint">🔍 busca automática</span></label>
+                                        <div class="food-search-wrapper">
+                                            <input type="text" class="food-name" placeholder="ex: Frango grelhado" required maxlength="100" autocomplete="off" oninput="onFoodNameInput(this)">
+                                            <div class="food-autocomplete-dropdown" style="display:none;"></div>
+                                        </div>
                                     </div>
                                     <div class="form-group">
                                         <label>Qtd</label>
@@ -208,6 +211,85 @@
 </div>
 
 <style>
+.food-search-hint {
+    font-size: 11px;
+    font-weight: 400;
+    color: var(--text-secondary, #888);
+    margin-left: 6px;
+}
+
+.food-search-wrapper {
+    position: relative;
+}
+
+.food-autocomplete-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: #1e1e1e;
+    border: 1px solid #FF6B00;
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    z-index: 1000;
+    max-height: 280px;
+    overflow-y: auto;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+}
+
+.food-autocomplete-item {
+    padding: 10px 14px;
+    cursor: pointer;
+    border-bottom: 1px solid #2a2a2a;
+    transition: background 120ms;
+}
+
+.food-autocomplete-item:last-child {
+    border-bottom: none;
+}
+
+.food-autocomplete-item:hover {
+    background: #2a2a2a;
+}
+
+.food-autocomplete-name {
+    font-weight: 600;
+    font-size: 13px;
+    color: #f0f0f0;
+    margin-bottom: 3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.food-autocomplete-macros {
+    font-size: 11px;
+    color: #888;
+}
+
+.food-autocomplete-macros span {
+    margin-right: 10px;
+}
+
+.food-autocomplete-macros .kcal {
+    color: #FF6B00;
+    font-weight: 600;
+}
+
+.food-autocomplete-source {
+    font-size: 10px;
+    color: #555;
+    float: right;
+}
+
+.food-autocomplete-loading,
+.food-autocomplete-empty {
+    padding: 12px 14px;
+    font-size: 13px;
+    color: #888;
+    text-align: center;
+}
+
 .diet-page {
     max-width: 1200px;
     margin: 0 auto;
@@ -629,6 +711,91 @@
     const activePlanId = '<%= (activePlan && activePlan.id) ? activePlan.id : "" %>';
     let isSubmittingMeal = false;
     let isSubmittingFood = {};
+
+    // ========================
+    // FOOD AUTOCOMPLETE
+    // ========================
+    let _foodSearchTimer = null;
+
+    function onFoodNameInput(input) {
+        const wrapper = input.closest('.food-search-wrapper');
+        const dropdown = wrapper.querySelector('.food-autocomplete-dropdown');
+        const q = input.value.trim();
+
+        clearTimeout(_foodSearchTimer);
+
+        if (q.length < 2) {
+            dropdown.style.display = 'none';
+            return;
+        }
+
+        dropdown.innerHTML = '<div class="food-autocomplete-loading">🔍 Buscando...</div>';
+        dropdown.style.display = 'block';
+
+        _foodSearchTimer = setTimeout(() => doFoodSearch(q, input, dropdown), 400);
+    }
+
+    async function doFoodSearch(q, input, dropdown) {
+        try {
+            const res = await fetch('/diet/food-search?q=' + encodeURIComponent(q));
+            const data = await res.json();
+
+            if (!data.success || data.results.length === 0) {
+                dropdown.innerHTML = '<div class="food-autocomplete-empty">Nenhum resultado encontrado</div>';
+                return;
+            }
+
+            dropdown.innerHTML = data.results.map((item, i) =>
+                `<div class="food-autocomplete-item" onclick="selectFoodResult(this, ${i})"
+                      data-name="${escapeAttr(item.name)}"
+                      data-calories="${item.calories}"
+                      data-protein="${item.protein}"
+                      data-carbs="${item.carbs}"
+                      data-fat="${item.fat}">
+                    <span class="food-autocomplete-source">${escapeHtml(item.source)}</span>
+                    <div class="food-autocomplete-name">${escapeHtml(item.name)}</div>
+                    <div class="food-autocomplete-macros">
+                        <span class="kcal">⚡ ${item.calories} kcal</span>
+                        <span>🥩 ${item.protein}g prot</span>
+                        <span>🌾 ${item.carbs}g carbs</span>
+                        <span>🧈 ${item.fat}g gord</span>
+                        <small style="color:#555">por 100g</small>
+                    </div>
+                </div>`
+            ).join('');
+
+        } catch (e) {
+            dropdown.innerHTML = '<div class="food-autocomplete-empty">Erro na busca</div>';
+        }
+    }
+
+    function selectFoodResult(el, i) {
+        const form = el.closest('form');
+        const input = form.querySelector('.food-name');
+        const dropdown = el.closest('.food-autocomplete-dropdown');
+
+        input.value = el.dataset.name;
+        form.querySelector('.food-calories').value = el.dataset.calories;
+        form.querySelector('.food-protein').value = el.dataset.protein;
+        form.querySelector('.food-carbs').value = el.dataset.carbs;
+        form.querySelector('.food-fat').value = el.dataset.fat;
+
+        dropdown.style.display = 'none';
+    }
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', e => {
+        if (!e.target.closest('.food-search-wrapper')) {
+            document.querySelectorAll('.food-autocomplete-dropdown').forEach(d => d.style.display = 'none');
+        }
+    });
+
+    function escapeHtml(str) {
+        return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+    function escapeAttr(str) {
+        return String(str).replace(/"/g,'&quot;');
+    }
 
     // 🔧 Get CSRF token with fallbacks
     function getCsrfToken() {
