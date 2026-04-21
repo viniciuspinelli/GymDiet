@@ -5,19 +5,14 @@
         <a href="/workouts" class="btn-back">← Voltar</a>
     </div>
 
-    <!-- Timer and Progress -->
+    <!-- Progress -->
     <div class="workout-controls">
-        <div class="timer-display">
-            <h2 id="timerDisplay">00:00</h2>
-            <p>Tempo decorrido</p>
-        </div>
-
         <div class="progress-bar-container">
             <div class="progress-label">
-                <span id="progressText">0/<%= totalCount %> exercícios</span>
+                <span id="progressText"><%= completedCount %>/<%= totalCount %> exercícios</span>
             </div>
             <div class="progress-bar">
-                <div id="progressFill" class="progress-fill" style="width: 0%"></div>
+                <div id="progressFill" class="progress-fill" style="width: <%= totalCount > 0 ? (completedCount / totalCount * 100) : 0 %>%"></div>
             </div>
         </div>
     </div>
@@ -74,43 +69,29 @@
     const sessionId = '<%= session.id %>';
     const csrfToken = '<%= csrfToken %>';
     const totalExercises = <%= totalCount %>;
-    let timerInterval = null;
+    let completedCount = <%= completedCount %>;
 
-    // Persistir startTime no localStorage por sessionId
-    const storageKey = 'workout_start_' + sessionId;
-    let savedStart = localStorage.getItem(storageKey);
-    let startTime;
-    if (savedStart) {
-        startTime = new Date(parseInt(savedStart, 10));
-    } else {
-        startTime = new Date();
-        localStorage.setItem(storageKey, startTime.getTime().toString());
+    // Show complete button if already all done on load
+    if (completedCount === totalExercises && totalExercises > 0) {
+        document.getElementById('completeSection').style.display = 'block';
     }
-
-    // 🔧 Timer com cleanup para evitar memory leak
-    function startTimer() {
-        timerInterval = setInterval(() => {
-            const elapsed = Math.floor((new Date() - startTime) / 1000);
-            const minutes = Math.floor(elapsed / 60);
-            const seconds = elapsed % 60;
-            document.getElementById('timerDisplay').textContent = 
-                String(minutes).padStart(2, '0') + ':' + String(seconds).padStart(2, '0');
-        }, 1000);
-    }
-
-    startTimer();
 
     // Complete Exercise
     document.querySelectorAll('.btn-complete').forEach(btn => {
+        // If already completed, disable button on load
+        const exerciseItem = document.querySelector(`[data-exercise-id="${btn.dataset.exerciseId}"]`);
+        if (exerciseItem && exerciseItem.classList.contains('completed')) {
+            btn.disabled = true;
+        }
+
         btn.addEventListener('click', async function() {
             const sessionId = this.dataset.sessionId;
             const exerciseId = this.dataset.exerciseId;
             const exerciseItem = document.querySelector(`[data-exercise-id="${exerciseId}"]`);
 
             try {
-                // 🔧 Desabilitar botão para prevenir double-click
                 this.disabled = true;
-                
+
                 const response = await fetch(`/workouts/session/${sessionId}/exercise/${exerciseId}/complete`, {
                     method: 'PATCH',
                     headers: {
@@ -119,24 +100,22 @@
                     }
                 });
 
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
-                }
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
                 const data = await response.json();
-                
+
                 if (data.success) {
                     exerciseItem.classList.add('completed');
-                    showToast('Exercício marcado como completo! ✓', 'success');
+                    completedCount++;
+                    document.getElementById('progressText').textContent = `${completedCount}/${totalExercises} exercícios`;
+                    document.getElementById('progressFill').style.width = `${(completedCount / totalExercises) * 100}%`;
 
-                    // Update progress
-                    const completed = document.querySelectorAll('.exercise-item.completed').length;
-                    document.getElementById('progressText').textContent = `${completed}/${totalExercises} exercícios`;
-                    document.getElementById('progressFill').style.width = `${(completed / totalExercises) * 100}%`;
-
-                    // Show complete button if all done
-                    if (completed === totalExercises) {
-                        document.getElementById('completeSection').style.display = 'block';
+                    // Auto-finish when all exercises done
+                    if (completedCount === totalExercises) {
+                        showToast('Todos os exercícios concluídos! Finalizando treino... 🎉', 'success');
+                        await finishWorkout();
+                    } else {
+                        showToast('Exercício concluído! ✓', 'success');
                     }
                 } else {
                     throw new Error(data.message || 'Erro desconhecido');
@@ -144,47 +123,42 @@
             } catch (error) {
                 console.error('Error:', error);
                 showToast('Erro: ' + error.message, 'error');
-                this.disabled = false; // 🔧 Reabilitar se falhar
+                this.disabled = false;
             }
         });
     });
 
-    // Complete Workout
-    document.getElementById('completeWorkoutBtn')?.addEventListener('click', async function() {
-        const elapsed = Math.floor((new Date() - startTime) / 1000);
-        const durationMin = Math.floor(elapsed / 60);
-
+    async function finishWorkout() {
         try {
-            // 🔧 Desabilitar botão para prevenir double-click
-            this.disabled = true;
-            
             const response = await fetch(`/workouts/session/${sessionId}/complete`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRF-Token': csrfToken
                 },
-                body: JSON.stringify({ durationMin })
+                body: JSON.stringify({ durationMin: 0 })
             });
 
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
-            }
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
             const data = await response.json();
-            
+
             if (data.success) {
-                if (timerInterval) clearInterval(timerInterval); // 🔧 Limpar timer antes de sair
-                localStorage.removeItem(storageKey); // Limpar tempo salvo
-                showToast('Treino finalizado com sucesso! 🎉', 'success');
-                setTimeout(() => window.location.href = '/workouts', 1500);
+                setTimeout(() => window.location.href = '/workouts', 1800);
             } else {
                 throw new Error(data.message || 'Erro ao finalizar');
             }
         } catch (error) {
             console.error('Error:', error);
-            showToast('Erro: ' + error.message, 'error');
-            this.disabled = false; // 🔧 Reabilitar se falhar
+            showToast('Erro ao finalizar: ' + error.message, 'error');
+            // Show manual button as fallback
+            document.getElementById('completeSection').style.display = 'block';
         }
+    }
+
+    // Manual complete button (fallback)
+    document.getElementById('completeWorkoutBtn')?.addEventListener('click', async function() {
+        this.disabled = true;
+        await finishWorkout();
     });
 </script>

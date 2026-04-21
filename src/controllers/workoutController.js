@@ -71,7 +71,17 @@ exports.startWorkout = async (req, res, next) => {
 
     const plan = planResult.rows[0];
 
-    // Create workout session
+    // Resume existing in-progress session if any
+    const existingSession = await global.db.query(
+      `SELECT id FROM "WorkoutSession" WHERE "userId" = $1 AND "workoutPlanId" = $2 AND "isCompleted" = false ORDER BY "startedAt" DESC LIMIT 1`,
+      [userId, plan.id]
+    );
+
+    if (existingSession.rows.length > 0) {
+      return res.redirect(`/workouts/session/${existingSession.rows[0].id}`);
+    }
+
+    // Create new workout session
     const sessionResult = await global.db.query(
       `INSERT INTO "WorkoutSession" ("userId", "workoutPlanId", "startedAt", "isCompleted")
        VALUES ($1, $2, NOW(), false)
