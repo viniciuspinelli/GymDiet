@@ -1,4 +1,6 @@
 const bcrypt = require('bcrypt');
+const crypto = require('crypto');
+const nodemailer = require('nodemailer');
 
 /**
  * Display login page
@@ -181,4 +183,202 @@ exports.getLogout = (req, res, next) => {
     }
     res.redirect('/auth/login');
   });
+};
+
+// ========================
+// PASSWORD RECOVERY
+// ========================
+
+function createMailTransporter() {
+  return nodemailer.createTransport({
+    host: process.env.SMTP_HOST,
+    port: parseInt(process.env.SMTP_PORT || '587'),
+    secure: process.env.SMTP_SECURE === 'true',
+    auth: {
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS,
+    },
+  });
+}
+
+/**
+ * GET /auth/forgot-password
+ */
+exports.getForgotPassword = (req, res) => {
+  if (req.session.user) return res.redirect('/workouts');
+  res.render('auth/forgot-password', {
+    title: 'Recuperar Senha',
+    csrfToken: req.csrfToken ? req.csrfToken() : '',
+    success: null,
+    error: null,
+  });
+};
+
+/**
+ * POST /auth/forgot-password
+ */
+exports.postForgotPassword = async (req, res, next) => {
+  const csrfToken = req.csrfToken ? req.csrfToken() : '';
+  try {
+    const { email } = req.body;
+    if (!email || !email.trim()) {
+      return res.render('auth/forgot-password', {
+        title: 'Recuperar Senha',
+        csrfToken,
+        success: null,
+        error: 'Informe o e-mail cadastrado.',
+      });
+    }
+
+    const safeEmail = email.trim().toLowerCase();
+    const result = await global.db.query(
+      `SELECT id, username, email FROM "User" WHERE LOWER(email) = $1`,
+      [safeEmail]
+    );
+
+    // Always show success message to avoid email enumeration
+    if (result.rows.length === 0) {
+      return res.render('auth/forgot-password', {
+        title: 'Recuperar Senha',
+        csrfToken,
+        success: 'Se esse e-mail estiver cadastrado, você receberá um link para redefinir sua senha.',
+        error: null,
+      });
+    }
+
+    const user = result.rows[0];
+    const rawToken = crypto.randomBytes(32).toString('hex');
+    const hashedToken = crypto.createHash('sha256').update(rawToken).digest('hex');
+    const expiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+    await global.db.query(
+      `UPDATE "User" SET "resetPasswordToken" = $1, "resetPasswordExpiry" = $2 WHERE id = $3`,
+      [hashedToken, expiry, user.id]
+    );
+
+    const appUrl = process.env.APP_URL || `http://localhost:${process.env.PORT || 3000}`;
+    const resetLink = `${appUrl}/auth/reset-password/${rawToken}`;
+
+    const transporter = createMailTransporter();
+    await transporter.sendMail({
+      from: `"GymDiet" <${process.env.SMTP_USER}>`,
+      to: user.email,
+      subject: 'Redefinição de Senha — GymDiet',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 520px; margin: auto; background: #1a1a2e; color: #e0e0e0; padding: 32px; border-radius: 12px;">
+          <h2 style="color: #ff6b35; margin-bottom: 8px;">GymDiet</h2>
+          <p>Olá, <strong>${user.username}</strong>!</p>
+          <p>Recebemos uma solicitação para redefinir a sua senha. Clique no botão abaixo para criar uma nova senha:</p>
+          <div style="text-align: center; margin: 32px 0;">
+            <a href="${resetLink}" style="background: #ff6b35; color: #fff; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px;">Redefinir Senha</a>
+          </div>
+          <p style="font-size: 13px; color: #aaa;">Este link expira em 1 hora. Se você não solicitou a redefinição, ignore este e-mail.</p>
+          <p style="font-size: 12px; color: #666;">Ou copie e cole este link no navegador:<br>${resetLink}</p>
+        </div>
+      `,
+    });
+
+    res.render('auth/forgot-password', {
+      title: 'Recuperar Senha',
+      csrfToken,
+      success: 'Se esse e-mail estiver cadastrado, você receberá um link para redefinir sua senha.',
+      error: null,
+    });
+  } catch (err) {
+    console.error('Forgot password error:', err);
+    next(err);
+  }
+};
+
+/**
+ * GET /auth/reset-password/:token
+ */
+exports.getResetPassword = async (req, res, next) => {
+  try {
+    const hashedToken = crypto.createHash('sha256').update(req.params.token).digest('hex');
+    const result = await global.db.query(
+      `SELECT id FROM "User" WHERE "resetPasswordToken" = $1 AND "resetPasswordExpiry" > NOW()`,
+      [hashedToken]
+    );
+    if (result.rows.length === 0) {
+      return res.render('auth/reset-password', {
+        title: 'Redefinir Senha',
+        csrfToken: req.csrfToken ? req.csrfToken() : '',
+        token: null,
+        error: 'Link inválido ou expirado. Solicite um novo link.',
+        success: null,
+      });
+    }
+    res.render('auth/reset-password', {
+      title: 'Redefinir Senha',
+      csrfToken: req.csrfToken ? req.csrfToken() : '',
+      token: req.params.token,
+      error: null,
+      success: null,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * POST /auth/reset-password/:token
+ */
+exports.postResetPassword = async (req, res, next) => {
+  const csrfToken = req.csrfToken ? req.csrfToken() : '';
+  try {
+    const { password, confirmPassword } = req.body;
+    const hashedToken = crypto.createHash('sha256').update(req.params.token).digest('hex');
+
+    const result = await global.db.query(
+      `SELECT id FROM "User" WHERE "resetPasswordToken" = $1 AND "resetPasswordExpiry" > NOW()`,
+      [hashedToken]
+    );
+
+    if (result.rows.length === 0) {
+      return res.render('auth/reset-password', {
+        title: 'Redefinir Senha',
+        csrfToken,
+        token: null,
+        error: 'Link inválido ou expirado. Solicite um novo link.',
+        success: null,
+      });
+    }
+
+    if (!password || password.length < 6) {
+      return res.render('auth/reset-password', {
+        title: 'Redefinir Senha',
+        csrfToken,
+        token: req.params.token,
+        error: 'A senha deve ter pelo menos 6 caracteres.',
+        success: null,
+      });
+    }
+
+    if (password !== confirmPassword) {
+      return res.render('auth/reset-password', {
+        title: 'Redefinir Senha',
+        csrfToken,
+        token: req.params.token,
+        error: 'As senhas não coincidem.',
+        success: null,
+      });
+    }
+
+    const hashed = await bcrypt.hash(password, 12);
+    await global.db.query(
+      `UPDATE "User" SET password = $1, "resetPasswordToken" = NULL, "resetPasswordExpiry" = NULL WHERE id = $2`,
+      [hashed, result.rows[0].id]
+    );
+
+    res.render('auth/reset-password', {
+      title: 'Redefinir Senha',
+      csrfToken,
+      token: null,
+      error: null,
+      success: 'Senha redefinida com sucesso! <a href="/auth/login">Entrar agora</a>',
+    });
+  } catch (err) {
+    next(err);
+  }
 };

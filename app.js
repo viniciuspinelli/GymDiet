@@ -29,6 +29,14 @@ const pool = new Pool({
 // Make pool globally available for routes
 global.db = pool;
 
+// Auto-migrate: add email + password reset columns if missing
+pool.query(`
+  ALTER TABLE "User"
+    ADD COLUMN IF NOT EXISTS email VARCHAR(255),
+    ADD COLUMN IF NOT EXISTS "resetPasswordToken" VARCHAR(255),
+    ADD COLUMN IF NOT EXISTS "resetPasswordExpiry" TIMESTAMPTZ
+`).catch(err => console.error('Migration error:', err.message));
+
 // ========================
 // MIDDLEWARE
 // ========================
@@ -111,10 +119,10 @@ app.get('/setup', async (req, res, next) => {
 // Public routes (CSRF already applied)
 app.use('/auth', authRoutes);
 
-// Redirect root to workouts (or login if not authenticated)
+// Redirect root to workouts (or landing page if not authenticated)
 app.get('/', async (req, res) => {
   try {
-    // Check if any users exist
+    // Check if any users exist (first-run setup)
     const result = await global.db.query('SELECT COUNT(*) FROM "User"');
     const userCount = parseInt(result.rows[0].count);
 
@@ -123,12 +131,16 @@ app.get('/', async (req, res) => {
       return res.redirect('/setup');
     }
 
-    // Users exist, proceed normally
+    // Logged-in users go to their dashboard
     if (req.session.user) {
-      res.redirect('/workouts');
-    } else {
-      res.redirect('/auth/login');
+      return res.redirect('/workouts');
     }
+
+    // Show landing page for visitors
+    res.render('landing', {
+      layout: 'layouts/landing',
+      title: 'GymDiet — Treinos e Dieta',
+    });
   } catch (err) {
     console.error('Erro ao verificar usuários:', err);
     res.redirect('/auth/login');

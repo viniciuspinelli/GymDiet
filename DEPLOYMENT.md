@@ -76,6 +76,12 @@ git push -u origin main
    | `PORT` | `3000` |
    | `DATABASE_URL` | *(Copiar da PostgreSQL)* |
    | `SESSION_SECRET` | *(Render gera automaticamente)* |
+   | `APP_URL` | *(URL do seu app, ex: https://gymdiet.onrender.com)* |
+   | `SMTP_HOST` | *(ex: smtp.gmail.com)* |
+   | `SMTP_PORT` | *(ex: 587)* |
+   | `SMTP_SECURE` | `false` *(use `true` para porta 465)* |
+   | `SMTP_USER` | *(seu e-mail SMTP)* |
+   | `SMTP_PASS` | *(sua senha de app SMTP)* |
 
 5. **Clique em "Create Web Service"**
    - Render fará o build e deploy automaticamente
