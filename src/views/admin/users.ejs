@@ -38,7 +38,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="<%= nonce %>">
 async function deleteUser(id, username) {
     if (!confirm(`Deletar o usuário "${username}"? Todos os dados serão removidos.`)) return;
     const res = await fetch(`/admin/users/${id}`, {

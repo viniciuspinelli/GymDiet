@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const helmet = require('helmet');
+const crypto = require('crypto');
 const session = require('express-session');
 const pgSession = require('connect-pg-simple')(session);
 const csrf = require('csurf');
@@ -24,13 +25,19 @@ const PORT = process.env.PORT || 3000;
 // Trust proxy — Render termina TLS no balanceador (1 hop)
 app.set('trust proxy', 1);
 
+// Gerar nonce por requisição (usado pelo Helmet CSP e pelas views)
+app.use((req, res, next) => {
+  res.locals.nonce = crypto.randomBytes(16).toString('base64');
+  next();
+});
+
 // Security headers
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'", (req, res) => `'nonce-${res.locals.nonce}'`],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       imgSrc: ["'self'", "data:"],
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
       connectSrc: ["'self'"],

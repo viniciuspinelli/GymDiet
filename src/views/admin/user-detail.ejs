@@ -98,7 +98,7 @@
     <% } %>
 </div>
 
-<script>
+<script nonce="<%= nonce %>">
 const userId = <%= targetUser.id %>;
 const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
 

@@ -707,7 +707,7 @@
 }
 </style>
 
-<script>
+<script nonce="<%= nonce %>">
     const csrfToken = '<%= csrfToken %>';
     const activePlanId = '<%= (activePlan && activePlan.id) ? activePlan.id : "" %>';
     let isSubmittingMeal = false;
