@@ -215,9 +215,15 @@ exports.getTemplates = async (req, res, next) => {
 
 exports.deleteWorkoutTemplate = async (req, res, next) => {
   try {
+    const id = parseInt(req.params.id);
     await global.db.query(
-      `DELETE FROM "WorkoutPlan" WHERE id = $1 AND "isTemplate" = true`,
-      [parseInt(req.params.id)]
+      `DELETE FROM "WorkoutSession" WHERE "workoutPlanId" = $1`, [id]
+    );
+    await global.db.query(
+      `DELETE FROM "Exercise" WHERE "workoutPlanId" = $1`, [id]
+    );
+    await global.db.query(
+      `DELETE FROM "WorkoutPlan" WHERE id = $1 AND "isTemplate" = true`, [id]
     );
     res.json({ success: true });
   } catch (err) {
@@ -355,6 +361,15 @@ exports.removeWorkout = async (req, res, next) => {
   try {
     const userId = parseInt(req.params.userId);
     const planId = parseInt(req.params.planId);
+    // Delete sessions first (SessionExercise cascades from WorkoutSession)
+    await global.db.query(
+      `DELETE FROM "WorkoutSession" WHERE "workoutPlanId" = $1 AND "userId" = $2`,
+      [planId, userId]
+    );
+    await global.db.query(
+      `DELETE FROM "Exercise" WHERE "workoutPlanId" = $1`,
+      [planId]
+    );
     await global.db.query(
       `DELETE FROM "WorkoutPlan" WHERE id = $1 AND "userId" = $2 AND "isTemplate" = false`,
       [planId, userId]

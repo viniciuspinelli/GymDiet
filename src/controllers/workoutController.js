@@ -462,7 +462,13 @@ exports.deleteWorkoutPlan = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Plano não encontrado' });
     }
 
-    // Delete associated exercises first (cascade)
+    // Delete sessions first (SessionExercise cascades from WorkoutSession)
+    await global.db.query(
+      'DELETE FROM "WorkoutSession" WHERE "workoutPlanId" = $1',
+      [parseInt(planId)]
+    );
+
+    // Delete associated exercises
     await global.db.query(
       'DELETE FROM "Exercise" WHERE "workoutPlanId" = $1',
       [parseInt(planId)]
