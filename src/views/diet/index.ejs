@@ -54,6 +54,7 @@
         </div>
 
         <!-- Add Meal Button -->
+        <% if (typeof isAdmin !== 'undefined' && isAdmin) { %>
         <div class="add-meal-section">
             <button class="btn btn-primary btn-lg" onclick="showAddMealForm()">
                 ➕ Adicionar Refeição
@@ -80,6 +81,7 @@
                 </div>
             </form>
         </div>
+        <% } %>
 
         <!-- Meals -->
         <div class="meals-container">
@@ -94,8 +96,10 @@
                                 <% } %>
                             </div>
                             <div class="meal-header-actions">
+                                <% if (typeof isAdmin !== 'undefined' && isAdmin) { %>
                                 <button class="btn btn-success btn-sm" onclick="toggleAddFoodForm(<%= meal.id %>)">➕ Alimento</button>
                                 <button class="btn-delete btn" onclick="deleteMeal(<%= meal.id %>)" title="Deletar refeição">🗑️</button>
+                                <% } %>
                             </div>
                         </div>
 
@@ -121,7 +125,7 @@
                                                 </td>
                                                 <td class="quantity-cell"><%= food.quantity %></td>
                                                 <td><%= food.calories ? food.calories + ' kcal' : '—' %></td>
-                                                <td><button class="btn btn-delete btn-sm" onclick="deleteFood(<%= food.id %>)">🗑️</button></td>
+                                                <td><% if (typeof isAdmin !== 'undefined' && isAdmin) { %><button class="btn btn-delete btn-sm" onclick="deleteFood(<%= food.id %>)">🗑️</button><% } %></td>
                                             </tr>
                                         <% }); %>
                                     </tbody>
@@ -131,6 +135,7 @@
                             <% } %>
                         </div>
 
+                        <% if (typeof isAdmin !== 'undefined' && isAdmin) { %>
                         <div class="add-food-form" id="addFoodForm-<%= meal.id %>" style="display: none;">
                             <h4>➕ Adicionar Alimento</h4>
                             <form onsubmit="addFood(event, <%= meal.id %>)">
@@ -182,6 +187,7 @@
                                 </div>
                             </form>
                         </div>
+                        <% } %>
 
                     </div>
                 <% }); %>

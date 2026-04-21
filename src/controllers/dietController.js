@@ -169,6 +169,10 @@ exports.addMeal = async (req, res, next) => {
     const { mealPlanId, name, time } = req.body;
     const userId = req.session.user.id;
 
+    if (req.session.user.role !== 'admin') {
+      return res.status(403).json({ success: false, message: 'Apenas administradores podem adicionar refeições.' });
+    }
+
     if (!name) {
       return res.status(400).json({ success: false, message: 'Nome é obrigatório' });
     }
@@ -203,6 +207,10 @@ exports.deleteMeal = async (req, res, next) => {
   try {
     const { mealId } = req.params;
     const userId = req.session.user.id;
+
+    if (req.session.user.role !== 'admin') {
+      return res.status(403).json({ success: false, message: 'Apenas administradores podem remover refeições.' });
+    }
 
     // Verify meal belongs to user's plan
     const ownerCheck = await global.db.query(
@@ -241,6 +249,10 @@ exports.addFood = async (req, res, next) => {
   try {
     const { mealId, name, quantity, calories, protein, carbs, fat, notes } = req.body;
     const userId = req.session.user.id;
+
+    if (req.session.user.role !== 'admin') {
+      return res.status(403).json({ success: false, message: 'Apenas administradores podem adicionar alimentos.' });
+    }
 
     // Verify meal belongs to user's plan
     const ownerCheck = await global.db.query(
@@ -349,6 +361,10 @@ exports.deleteFood = async (req, res, next) => {
   try {
     const { foodId } = req.params;
     const userId = req.session.user.id;
+
+    if (req.session.user.role !== 'admin') {
+      return res.status(403).json({ success: false, message: 'Apenas administradores podem remover alimentos.' });
+    }
 
     // Verify food belongs to user's plan
     const ownerCheck = await global.db.query(
