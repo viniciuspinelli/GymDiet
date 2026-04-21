@@ -23,7 +23,7 @@
                     <a href="/admin/users/<%= u.id %>" class="btn btn-sm btn-secondary">Ver Planos</a>
                     <a href="/admin/users/<%= u.id %>/edit" class="btn btn-sm btn-secondary">✏️ Editar</a>
                     <% if (u.id !== user.id) { %>
-                        <button class="btn btn-sm btn-danger" onclick="deleteUser(<%= u.id %>, '<%= u.username %>')">🗑️</button>
+                        <button class="btn btn-sm btn-danger js-delete-user" data-id="<%= u.id %>" data-username="<%= u.username %>">🗑️</button>
                     <% } %>
                 </div>
             </div>
@@ -39,18 +39,24 @@
 </div>
 
 <script nonce="<%= nonce %>">
-async function deleteUser(id, username) {
-    if (!confirm(`Deletar o usuário "${username}"? Todos os dados serão removidos.`)) return;
-    const res = await fetch(`/admin/users/${id}`, {
-        method: 'DELETE',
-        headers: { 'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content }
+document.querySelectorAll('.js-delete-user').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+        const id = this.dataset.id;
+        const username = this.dataset.username;
+        if (!confirm(`Deletar o usuário "${username}"? Todos os dados serão removidos.`)) return;
+        fetch(`/admin/users/${id}`, {
+            method: 'DELETE',
+            headers: { 'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content }
+        })
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+            if (data.success) {
+                showToast(`Usuário ${username} removido`, 'success');
+                setTimeout(function() { location.reload(); }, 800);
+            } else {
+                showToast(data.message || 'Erro ao deletar', 'error');
+            }
+        });
     });
-    const data = await res.json();
-    if (data.success) {
-        showToast(`Usuário ${username} removido`, 'success');
-        setTimeout(() => location.reload(), 800);
-    } else {
-        showToast(data.message || 'Erro ao deletar', 'error');
-    }
-}
+});
 </script>

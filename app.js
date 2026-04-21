@@ -37,6 +37,7 @@ app.use(helmet({
     directives: {
       defaultSrc: ["'self'"],
       scriptSrc: ["'self'", (req, res) => `'nonce-${res.locals.nonce}'`],
+      scriptSrcAttr: ["'unsafe-inline'"],
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       imgSrc: ["'self'", "data:"],
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
