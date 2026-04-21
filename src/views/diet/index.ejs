@@ -725,7 +725,7 @@
 
         clearTimeout(_foodSearchTimer);
 
-        if (q.length < 2) {
+        if (q.length < 3) {
             dropdown.style.display = 'none';
             return;
         }
@@ -733,7 +733,7 @@
         dropdown.innerHTML = '<div class="food-autocomplete-loading">🔍 Buscando...</div>';
         dropdown.style.display = 'block';
 
-        _foodSearchTimer = setTimeout(() => doFoodSearch(q, input, dropdown), 400);
+        _foodSearchTimer = setTimeout(() => doFoodSearch(q, input, dropdown), 800);
     }
 
     async function doFoodSearch(q, input, dropdown) {

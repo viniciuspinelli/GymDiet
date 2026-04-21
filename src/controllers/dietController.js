@@ -451,6 +451,25 @@ exports.toggleTemplate = async (req, res, next) => {
 // FOOD NUTRITION SEARCH
 // ========================
 
+// Simple in-memory cache to avoid hammering APIs on repeated/rapid searches
+const _foodCache = new Map(); // key -> { results, expiresAt }
+const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+
+function getCached(key) {
+  const entry = _foodCache.get(key);
+  if (!entry) return null;
+  if (Date.now() > entry.expiresAt) { _foodCache.delete(key); return null; }
+  return entry.results;
+}
+function setCache(key, results) {
+  _foodCache.set(key, { results, expiresAt: Date.now() + CACHE_TTL_MS });
+  // Limit cache size
+  if (_foodCache.size > 200) {
+    const firstKey = _foodCache.keys().next().value;
+    _foodCache.delete(firstKey);
+  }
+}
+
 // Common PT→EN translations for gym foods (for USDA which is English-only)
 const PT_EN_MAP = {
   'frango': 'chicken breast', 'peito de frango': 'chicken breast', 'file de frango': 'chicken breast',
@@ -518,13 +537,13 @@ async function searchUSDA(query) {
 }
 
 async function searchOpenFoodFacts(query) {
-  // Use v2 API with Portuguese language preference
-  const url = `https://world.openfoodfacts.org/api/v2/search?search_terms=${encodeURIComponent(query)}&fields=product_name,nutriments&page_size=12&lc=pt`;
+  // CGI endpoint — more stable than v2
+  const url = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}&json=1&page_size=12&fields=product_name,nutriments&lc=pt&cc=br`;
 
   console.log(`[OFF] searching: "${query}"`);
   const response = await fetch(url, {
     signal: AbortSignal.timeout(8000),
-    headers: { 'User-Agent': 'GymDiet/1.0 (contact@gymdiet.app)' }
+    headers: { 'User-Agent': 'GymDiet/1.0' }
   });
 
   if (!response.ok) {
@@ -560,6 +579,14 @@ exports.searchFood = async (req, res) => {
     }
 
     const query = q.trim();
+    const cacheKey = query.toLowerCase();
+
+    // Serve from cache if available
+    const cached = getCached(cacheKey);
+    if (cached) {
+      console.log(`[food-search] cache hit for "${query}"`);
+      return res.json({ success: true, results: cached });
+    }
 
     // Run both APIs in parallel
     const [usdaResult, offResult] = await Promise.allSettled([
@@ -584,7 +611,9 @@ exports.searchFood = async (req, res) => {
       return true;
     });
 
-    res.json({ success: true, results: combined.slice(0, 8) });
+    const results = combined.slice(0, 8);
+    setCache(cacheKey, results);
+    res.json({ success: true, results });
   } catch (error) {
     console.error('Error searching food:', error);
     res.json({ success: true, results: [] });
