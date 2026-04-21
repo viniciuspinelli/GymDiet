@@ -68,7 +68,8 @@ pool.query(`
   ALTER TABLE "User"
     ADD COLUMN IF NOT EXISTS email VARCHAR(255),
     ADD COLUMN IF NOT EXISTS "resetPasswordToken" VARCHAR(255),
-    ADD COLUMN IF NOT EXISTS "resetPasswordExpiry" TIMESTAMPTZ
+    ADD COLUMN IF NOT EXISTS "resetPasswordExpiry" TIMESTAMPTZ,
+    ADD COLUMN IF NOT EXISTS "fullName" VARCHAR(255)
 `).catch(err => console.error('Migration error:', err.message));
 
 // ========================

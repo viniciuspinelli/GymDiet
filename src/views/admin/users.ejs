@@ -13,7 +13,10 @@
                 <div class="admin-user-info">
                     <span class="admin-user-avatar"><%= u.username.charAt(0).toUpperCase() %></span>
                     <div>
-                        <span class="admin-user-name"><%= u.username %></span>
+                        <span class="admin-user-name">
+                            <%= u.fullName || u.username %>
+                            <% if (u.fullName) { %><small style="font-weight:400;color:var(--text-secondary, #888);margin-left:6px;">@<%= u.username %></small><% } %>
+                        </span>
                         <span class="admin-user-role <%= u.role === 'admin' ? 'role-admin' : 'role-user' %>">
                             <%= u.role === 'admin' ? '⚡ Admin' : '👤 Aluno' %>
                         </span>

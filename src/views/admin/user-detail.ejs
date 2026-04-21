@@ -3,8 +3,9 @@
         <div>
             <a href="/admin/users" class="btn-back">← Voltar</a>
             <h1>
-                <span class="admin-user-avatar lg"><%= targetUser.username.charAt(0).toUpperCase() %></span>
-                <%= targetUser.username %>
+                <span class="admin-user-avatar lg"><%= (targetUser.fullName || targetUser.username).charAt(0).toUpperCase() %></span>
+                <%= targetUser.fullName || targetUser.username %>
+                <% if (targetUser.fullName) { %><small style="font-size:0.55em;font-weight:400;color:var(--text-secondary,#888);margin-left:8px;">@<%= targetUser.username %></small><% } %>
                 <span class="admin-user-role <%= targetUser.role === 'admin' ? 'role-admin' : 'role-user' %>">
                     <%= targetUser.role === 'admin' ? '⚡ Admin' : '👤 Aluno' %>
                 </span>

@@ -31,7 +31,7 @@ exports.getDashboard = async (req, res, next) => {
 exports.getUsers = async (req, res, next) => {
   try {
     const result = await global.db.query(
-      `SELECT id, username, role, "createdAt" FROM "User" ORDER BY "createdAt" DESC`
+      `SELECT id, username, "fullName", role, "createdAt" FROM "User" ORDER BY "createdAt" DESC`
     );
     res.render('admin/users', {
       title: 'Gerenciar Usuários',
@@ -54,7 +54,7 @@ exports.getCreateUser = (req, res) => {
 
 exports.postCreateUser = async (req, res, next) => {
   try {
-    const { username, password, role, email } = req.body;
+    const { username, fullName, password, role, email } = req.body;
     if (!username || !password || !email) {
       return res.render('admin/user-form', {
         title: 'Novo Usuário',
@@ -75,9 +75,10 @@ exports.postCreateUser = async (req, res, next) => {
     const hashed = await bcrypt.hash(password, 12);
     const safeRole = role === 'admin' ? 'admin' : 'user';
     const safeEmail = email && email.trim() ? email.trim().toLowerCase() : null;
+    const safeFullName = fullName && fullName.trim() ? fullName.trim() : null;
     await global.db.query(
-      `INSERT INTO "User" (username, password, role, email) VALUES ($1, $2, $3, $4)`,
-      [username, hashed, safeRole, safeEmail]
+      `INSERT INTO "User" (username, "fullName", password, role, email) VALUES ($1, $2, $3, $4, $5)`,
+      [username, safeFullName, hashed, safeRole, safeEmail]
     );
     res.redirect('/admin/users');
   } catch (err) {
@@ -88,7 +89,7 @@ exports.postCreateUser = async (req, res, next) => {
 exports.getEditUser = async (req, res, next) => {
   try {
     const result = await global.db.query(
-      `SELECT id, username, role, email FROM "User" WHERE id = $1`, [req.params.id]
+      `SELECT id, username, "fullName", role, email FROM "User" WHERE id = $1`, [req.params.id]
     );
     if (!result.rows[0]) return res.redirect('/admin/users');
     res.render('admin/user-form', {
@@ -104,12 +105,12 @@ exports.getEditUser = async (req, res, next) => {
 
 exports.postEditUser = async (req, res, next) => {
   try {
-    const { username, password, role, email } = req.body;
+    const { username, fullName, password, role, email } = req.body;
     const userId = parseInt(req.params.id);
 
     // Prevent demoting yourself
     if (userId === req.session.user.id && role !== 'admin') {
-      const result = await global.db.query(`SELECT id, username, role, email FROM "User" WHERE id = $1`, [userId]);
+      const result = await global.db.query(`SELECT id, username, "fullName", role, email FROM "User" WHERE id = $1`, [userId]);
       return res.render('admin/user-form', {
         title: 'Editar Usuário',
         csrfToken: req.csrfToken(),
@@ -120,17 +121,18 @@ exports.postEditUser = async (req, res, next) => {
 
     const safeRole = role === 'admin' ? 'admin' : 'user';
     const safeEmail = email && email.trim() ? email.trim().toLowerCase() : null;
+    const safeFullName = fullName && fullName.trim() ? fullName.trim() : null;
 
     if (password && password.trim() !== '') {
       const hashed = await bcrypt.hash(password, 12);
       await global.db.query(
-        `UPDATE "User" SET username = $1, password = $2, role = $3, email = $4 WHERE id = $5`,
-        [username, hashed, safeRole, safeEmail, userId]
+        `UPDATE "User" SET username = $1, "fullName" = $2, password = $3, role = $4, email = $5 WHERE id = $6`,
+        [username, safeFullName, hashed, safeRole, safeEmail, userId]
       );
     } else {
       await global.db.query(
-        `UPDATE "User" SET username = $1, role = $2, email = $3 WHERE id = $4`,
-        [username, safeRole, safeEmail, userId]
+        `UPDATE "User" SET username = $1, "fullName" = $2, role = $3, email = $4 WHERE id = $5`,
+        [username, safeFullName, safeRole, safeEmail, userId]
       );
     }
     res.redirect('/admin/users');
@@ -155,7 +157,7 @@ exports.deleteUser = async (req, res, next) => {
 exports.getUserDetail = async (req, res, next) => {
   try {
     const userId = parseInt(req.params.id);
-    const userResult = await global.db.query(`SELECT id, username, role FROM "User" WHERE id = $1`, [userId]);
+    const userResult = await global.db.query(`SELECT id, username, "fullName", role FROM "User" WHERE id = $1`, [userId]);
     if (!userResult.rows[0]) return res.redirect('/admin/users');
     const targetUser = userResult.rows[0];
 
