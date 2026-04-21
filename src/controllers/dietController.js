@@ -451,15 +451,57 @@ exports.toggleTemplate = async (req, res, next) => {
 // FOOD NUTRITION SEARCH
 // ========================
 
+// Common PT→EN translations for gym foods (for USDA which is English-only)
+const PT_EN_MAP = {
+  'frango': 'chicken breast', 'peito de frango': 'chicken breast', 'file de frango': 'chicken breast',
+  'carne': 'beef', 'carne bovina': 'beef', 'patinho': 'beef lean', 'alcatra': 'beef sirloin',
+  'peixe': 'fish', 'tilapia': 'tilapia', 'tilápia': 'tilapia', 'salmao': 'salmon', 'salmão': 'salmon', 'atum': 'tuna',
+  'ovo': 'egg', 'ovos': 'eggs', 'clara': 'egg white', 'clara de ovo': 'egg white',
+  'arroz': 'rice', 'arroz branco': 'white rice', 'arroz integral': 'brown rice',
+  'feijao': 'beans', 'feijão': 'beans', 'lentilha': 'lentils',
+  'batata': 'potato', 'batata doce': 'sweet potato', 'batata-doce': 'sweet potato',
+  'pao': 'bread', 'pão': 'bread', 'pao integral': 'whole wheat bread', 'pão integral': 'whole wheat bread',
+  'macarrao': 'pasta', 'macarrão': 'pasta', 'aveia': 'oats', 'granola': 'granola',
+  'leite': 'milk', 'iogurte': 'yogurt', 'queijo': 'cheese', 'requeijao': 'cream cheese', 'requeijão': 'cream cheese',
+  'whey': 'whey protein', 'proteina': 'protein', 'caseina': 'casein',
+  'amendoim': 'peanut', 'pasta de amendoim': 'peanut butter',
+  'banana': 'banana', 'maca': 'apple', 'maçã': 'apple', 'laranja': 'orange', 'morango': 'strawberry',
+  'brocolis': 'broccoli', 'brócolis': 'broccoli', 'espinafre': 'spinach', 'cenoura': 'carrot',
+  'azeite': 'olive oil', 'oleo': 'oil', 'óleo': 'oil',
+  'chocolate': 'chocolate', 'cacau': 'cocoa',
+};
+
+function translateToEN(query) {
+  const lower = query.toLowerCase().trim()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, ''); // strip accents
+  const normalized = lower;
+  // Try full phrase first, then first word
+  for (const [pt, en] of Object.entries(PT_EN_MAP)) {
+    const ptNorm = pt.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    if (normalized.includes(ptNorm)) return en;
+  }
+  return null;
+}
+
 async function searchUSDA(query) {
   const apiKey = process.env.USDA_API_KEY || 'DEMO_KEY';
-  const url = `https://api.nal.usda.gov/fdc/v1/foods/search?query=${encodeURIComponent(query)}&api_key=${apiKey}&dataType=Foundation,SR%20Legacy&pageSize=8`;
 
-  const response = await fetch(url, { signal: AbortSignal.timeout(5000) });
-  if (!response.ok) return [];
+  // Try English translation first, fallback to original query
+  const enQuery = translateToEN(query) || query;
+  const url = `https://api.nal.usda.gov/fdc/v1/foods/search?query=${encodeURIComponent(enQuery)}&api_key=${apiKey}&dataType=Foundation,SR%20Legacy&pageSize=8`;
+
+  console.log(`[USDA] searching: "${enQuery}" (original: "${query}")`);
+  const response = await fetch(url, { signal: AbortSignal.timeout(6000) });
+  if (!response.ok) {
+    console.warn(`[USDA] HTTP ${response.status}`);
+    return [];
+  }
 
   const data = await response.json();
-  if (!data.foods || data.foods.length === 0) return [];
+  if (!data.foods || data.foods.length === 0) {
+    console.log('[USDA] no results');
+    return [];
+  }
 
   return data.foods.map(food => {
     const nutrients = {};
@@ -476,17 +518,26 @@ async function searchUSDA(query) {
 }
 
 async function searchOpenFoodFacts(query) {
-  // Use Brazilian endpoint for better Portuguese results
-  const url = `https://br.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}&json=1&page_size=12&fields=product_name,nutriments`;
+  // Use v2 API with Portuguese language preference
+  const url = `https://world.openfoodfacts.org/api/v2/search?search_terms=${encodeURIComponent(query)}&fields=product_name,nutriments&page_size=12&lc=pt`;
 
-  const response = await fetch(url, { signal: AbortSignal.timeout(7000) });
-  if (!response.ok) return [];
+  console.log(`[OFF] searching: "${query}"`);
+  const response = await fetch(url, {
+    signal: AbortSignal.timeout(8000),
+    headers: { 'User-Agent': 'GymDiet/1.0 (contact@gymdiet.app)' }
+  });
+
+  if (!response.ok) {
+    console.warn(`[OFF] HTTP ${response.status}`);
+    return [];
+  }
 
   const data = await response.json();
-  if (!data.products || data.products.length === 0) return [];
+  const products = data.products || [];
+  console.log(`[OFF] returned ${products.length} products`);
 
-  return data.products
-    .filter(p => p.product_name && p.nutriments)
+  return products
+    .filter(p => p.product_name && p.nutriments && (p.nutriments['energy-kcal_100g'] > 0 || p.nutriments['proteins_100g'] > 0))
     .map(p => ({
       name: p.product_name,
       calories: Math.round(p.nutriments['energy-kcal_100g'] || 0),
@@ -494,8 +545,7 @@ async function searchOpenFoodFacts(query) {
       carbs: parseFloat((p.nutriments['carbohydrates_100g'] || 0).toFixed(1)),
       fat: parseFloat((p.nutriments['fat_100g'] || 0).toFixed(1)),
       source: 'Open Food Facts',
-    }))
-    .filter(f => f.calories > 0 || f.protein > 0);
+    }));
 }
 
 exports.searchFood = async (req, res) => {
@@ -511,7 +561,7 @@ exports.searchFood = async (req, res) => {
 
     const query = q.trim();
 
-    // Run both APIs in parallel for speed
+    // Run both APIs in parallel
     const [usdaResult, offResult] = await Promise.allSettled([
       searchUSDA(query),
       searchOpenFoodFacts(query),
@@ -520,8 +570,10 @@ exports.searchFood = async (req, res) => {
     const usdaItems = usdaResult.status === 'fulfilled' ? usdaResult.value : [];
     const offItems  = offResult.status  === 'fulfilled' ? offResult.value  : [];
 
-    if (usdaResult.status === 'rejected') console.warn('USDA search failed:', usdaResult.reason?.message);
-    if (offResult.status  === 'rejected') console.warn('OFF search failed:',  offResult.reason?.message);
+    if (usdaResult.status === 'rejected') console.warn('[USDA] failed:', usdaResult.reason?.message);
+    if (offResult.status  === 'rejected') console.warn('[OFF] failed:',  offResult.reason?.message);
+
+    console.log(`[food-search] USDA: ${usdaItems.length}, OFF: ${offItems.length}`);
 
     // Combine (USDA first), deduplicate by lowercase name
     const seen = new Set();
