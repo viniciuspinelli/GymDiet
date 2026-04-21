@@ -318,18 +318,49 @@ exports.importFromDiet = async (req, res, next) => {
       listId = listResult.rows[0].id;
     }
 
-    // Get all foods from active plan's meals
+    // Get all foods from active plan's meals, grouped by name
+    // Sum quantities of the same food appearing in multiple meals
     const foodsResult = await global.db.query(
-      `SELECT DISTINCT f.name, f.quantity
+      `SELECT f.name, f.quantity
        FROM "MealFood" f
        JOIN "Meal" m ON f."mealId" = m.id
        WHERE m."mealPlanId" = $1`,
       [planId]
     );
 
-    // Create shopping items from foods
-    const importedItems = [];
+    // Group by food name: sum numeric quantities, keep text quantities as-is
+    const foodMap = new Map();
     for (const food of foodsResult.rows) {
+      const key = food.name.trim().toLowerCase();
+      if (!foodMap.has(key)) {
+        foodMap.set(key, { name: food.name, quantity: food.quantity });
+      } else {
+        const existing = foodMap.get(key);
+        const existingNum = parseFloat(existing.quantity);
+        const newNum = parseFloat(food.quantity);
+        if (!isNaN(existingNum) && !isNaN(newNum)) {
+          // Both numeric: sum them
+          foodMap.set(key, { name: existing.name, quantity: String(existingNum + newNum) });
+        }
+        // If not numeric (e.g. "À vontade"), keep existing as-is
+      }
+    }
+
+    // Multiply numeric quantities by 7 (one week)
+    const DAYS = 7;
+    const weekFoods = Array.from(foodMap.values()).map(food => {
+      const num = parseFloat(food.quantity);
+      if (!isNaN(num)) {
+        // Round to avoid floating point noise (e.g. 350.0000001)
+        const weekQty = Math.round(num * DAYS * 10) / 10;
+        return { ...food, quantity: String(weekQty) };
+      }
+      return food; // non-numeric: keep as-is
+    });
+
+    // Create shopping items from weekly totals
+    const importedItems = [];
+    for (const food of weekFoods) {
       const result = await global.db.query(
         `INSERT INTO "ShoppingItem" ("shoppingListId", name, quantity, category, "isChecked")
          VALUES ($1, $2, $3, $4, false)
