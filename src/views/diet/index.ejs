@@ -149,7 +149,7 @@
                                     </div>
                                     <div class="form-group">
                                         <label>Qtd</label>
-                                        <input type="text" class="food-quantity" placeholder="150">
+                                        <input type="text" class="food-quantity" placeholder="150" oninput="onQuantityInput(this)">
                                     </div>
                                     <div class="form-group">
                                         <label>Unidade</label>
@@ -771,16 +771,37 @@
 
     function selectFoodResult(el, i) {
         const form = el.closest('form');
-        const input = form.querySelector('.food-name');
+        const nameInput = form.querySelector('.food-name');
         const dropdown = el.closest('.food-autocomplete-dropdown');
 
-        input.value = el.dataset.name;
-        form.querySelector('.food-calories').value = el.dataset.calories;
-        form.querySelector('.food-protein').value = el.dataset.protein;
-        form.querySelector('.food-carbs').value = el.dataset.carbs;
-        form.querySelector('.food-fat').value = el.dataset.fat;
+        nameInput.value = el.dataset.name;
+
+        // Store base values per 100g on the form for recalculation
+        form.dataset.base100Calories = el.dataset.calories;
+        form.dataset.base100Protein  = el.dataset.protein;
+        form.dataset.base100Carbs    = el.dataset.carbs;
+        form.dataset.base100Fat      = el.dataset.fat;
+
+        const qty = parseFloat(form.querySelector('.food-quantity').value) || 100;
+        applyNutritionForQty(form, qty);
 
         dropdown.style.display = 'none';
+        form.querySelector('.food-quantity').focus();
+    }
+
+    function onQuantityInput(input) {
+        const form = input.closest('form');
+        if (!form.dataset.base100Calories) return; // no food selected yet
+        const qty = parseFloat(input.value) || 0;
+        applyNutritionForQty(form, qty);
+    }
+
+    function applyNutritionForQty(form, qty) {
+        const factor = qty / 100;
+        form.querySelector('.food-calories').value = qty > 0 ? Math.round(form.dataset.base100Calories * factor) : '';
+        form.querySelector('.food-protein').value  = qty > 0 ? parseFloat((form.dataset.base100Protein  * factor).toFixed(1)) : '';
+        form.querySelector('.food-carbs').value    = qty > 0 ? parseFloat((form.dataset.base100Carbs    * factor).toFixed(1)) : '';
+        form.querySelector('.food-fat').value      = qty > 0 ? parseFloat((form.dataset.base100Fat      * factor).toFixed(1)) : '';
     }
 
     // Close dropdown when clicking outside
