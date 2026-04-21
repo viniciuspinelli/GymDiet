@@ -124,6 +124,12 @@ body {
     text-decoration: none;
 }
 
+.logo-img {
+    height: 36px;
+    width: auto;
+    display: block;
+}
+
 .logo-icon {
     font-size: 22px;
     line-height: 1;
