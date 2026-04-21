@@ -55,10 +55,12 @@
                                 <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>
                                 Meus Treinos
                             </a></li>
+                            <% if (user.role === 'admin') { %>
                             <li><a href="/workouts/plans" class="nav-link <%= title === 'Gerenciar Treinos' ? 'active' : '' %>">
                                 <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
                                 Gerenciar Planos
                             </a></li>
+                            <% } %>
                             <li><a href="/workouts/history" class="nav-link <%= title === 'Histórico de Treinos' ? 'active' : '' %>">
                                 <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
                                 Histórico
@@ -121,10 +123,12 @@
                     <span>🛒</span>
                     <span>Compras</span>
                 </a>
+                <% if (user.role === 'admin') { %>
                 <a href="/workouts/plans" class="nav-tab <%= title === 'Gerenciar Treinos' ? 'active' : '' %>">
                     <span>📋</span>
                     <span>Planos</span>
                 </a>
+                <% } %>
                 <a href="/workouts/history" class="nav-tab <%= title === 'Histórico de Treinos' ? 'active' : '' %>">
                     <span>📊</span>
                     <span>Histórico</span>

@@ -362,10 +362,12 @@ exports.deleteSession = async (req, res, next) => {
 exports.getWorkoutPlans = async (req, res, next) => {
   try {
     const userId = req.session.user.id;
-
-    // Get all plans with exercise count for this user
-    // Admin sees templates; regular users see only their assigned plans
     const isAdmin = req.session.user.role === 'admin';
+
+    if (!isAdmin) {
+      return res.redirect('/workouts');
+    }
+
     const result = await global.db.query(`
       SELECT 
         wp.id, 
