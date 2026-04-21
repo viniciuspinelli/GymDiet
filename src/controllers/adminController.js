@@ -12,6 +12,7 @@ exports.getDashboard = async (req, res, next) => {
 
     res.render('admin/dashboard', {
       title: 'Painel Admin',
+      csrfToken: req.csrfToken(),
       stats: {
         users: parseInt(usersResult.rows[0].count),
         workoutTemplates: parseInt(workoutTemplatesResult.rows[0].count),
@@ -34,6 +35,7 @@ exports.getUsers = async (req, res, next) => {
     );
     res.render('admin/users', {
       title: 'Gerenciar Usuários',
+      csrfToken: req.csrfToken(),
       users: result.rows,
     });
   } catch (err) {
@@ -44,6 +46,7 @@ exports.getUsers = async (req, res, next) => {
 exports.getCreateUser = (req, res) => {
   res.render('admin/user-form', {
     title: 'Novo Usuário',
+    csrfToken: req.csrfToken(),
     editUser: null,
     error: null,
   });
@@ -55,6 +58,7 @@ exports.postCreateUser = async (req, res, next) => {
     if (!username || !password) {
       return res.render('admin/user-form', {
         title: 'Novo Usuário',
+        csrfToken: req.csrfToken(),
         editUser: null,
         error: 'Usuário e senha são obrigatórios',
       });
@@ -63,6 +67,7 @@ exports.postCreateUser = async (req, res, next) => {
     if (existing.rows.length > 0) {
       return res.render('admin/user-form', {
         title: 'Novo Usuário',
+        csrfToken: req.csrfToken(),
         editUser: null,
         error: 'Nome de usuário já está em uso',
       });
@@ -87,6 +92,7 @@ exports.getEditUser = async (req, res, next) => {
     if (!result.rows[0]) return res.redirect('/admin/users');
     res.render('admin/user-form', {
       title: 'Editar Usuário',
+      csrfToken: req.csrfToken(),
       editUser: result.rows[0],
       error: null,
     });
@@ -105,6 +111,7 @@ exports.postEditUser = async (req, res, next) => {
       const result = await global.db.query(`SELECT id, username, role FROM "User" WHERE id = $1`, [userId]);
       return res.render('admin/user-form', {
         title: 'Editar Usuário',
+        csrfToken: req.csrfToken(),
         editUser: result.rows[0],
         error: 'Você não pode remover o seu próprio acesso de admin',
       });
@@ -168,6 +175,7 @@ exports.getUserDetail = async (req, res, next) => {
 
     res.render('admin/user-detail', {
       title: `Usuário: ${targetUser.username}`,
+      csrfToken: req.csrfToken(),
       targetUser,
       workouts: workoutsResult.rows,
       diets: dietsResult.rows,
@@ -205,6 +213,7 @@ exports.getTemplates = async (req, res, next) => {
 
     res.render('admin/templates', {
       title: 'Biblioteca de Planos',
+      csrfToken: req.csrfToken(),
       workoutTemplates: workoutsResult.rows,
       dietTemplates: dietsResult.rows,
     });

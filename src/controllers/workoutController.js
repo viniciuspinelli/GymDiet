@@ -44,6 +44,7 @@ exports.getWorkouts = async (req, res, next) => {
       title: 'Treinos',
       plans,
       totalSessions,
+      csrfToken: req.csrfToken(),
     });
   } catch (error) {
     console.error('Error fetching workouts:', error);
@@ -386,6 +387,7 @@ exports.getWorkoutPlans = async (req, res, next) => {
       title: 'Gerenciar Treinos',
       plans: result.rows,
       isAdmin,
+      csrfToken: req.csrfToken(),
     });
   } catch (error) {
     console.error('Error fetching workout plans:', error);

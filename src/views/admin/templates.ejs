@@ -24,7 +24,7 @@
                         <div class="assigned-plan-row">
                             <div class="assigned-plan-info">
                                 <span class="assigned-plan-name"><%= t.name %></span>
-                                <% if (t.dayofweek) { %><span class="plan-badge"><%= t.dayofweek %></span><% } %>
+                                <% if (t.dayOfWeek) { %><span class="plan-badge"><%= t.dayOfWeek %></span><% } %>
                                 <span class="plan-badge"><%= t.exercise_count %> exercícios</span>
                             </div>
                             <button class="btn btn-sm btn-danger" onclick="deleteTemplate('workout', <%= t.id %>, '<%= t.name %>')">🗑️</button>
