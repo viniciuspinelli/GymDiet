@@ -328,34 +328,41 @@ exports.importFromDiet = async (req, res, next) => {
       [planId]
     );
 
-    // Group by food name: sum numeric quantities, keep text quantities as-is
+    // Group by food name: sum numeric quantities, preserve unit
+    // quantity is stored as e.g. "150g", "1 porção", "À vontade"
     const foodMap = new Map();
+
+    function parseQty(str) {
+      if (!str) return { num: NaN, unit: '' };
+      const match = String(str).match(/^([\d.]+)\s*(.*)$/);
+      if (match) return { num: parseFloat(match[1]), unit: match[2].trim() };
+      return { num: NaN, unit: str.trim() };
+    }
+
     for (const food of foodsResult.rows) {
       const key = food.name.trim().toLowerCase();
+      const parsed = parseQty(food.quantity);
       if (!foodMap.has(key)) {
-        foodMap.set(key, { name: food.name, quantity: food.quantity });
+        foodMap.set(key, { name: food.name, num: parsed.num, unit: parsed.unit, rawQty: food.quantity });
       } else {
         const existing = foodMap.get(key);
-        const existingNum = parseFloat(existing.quantity);
-        const newNum = parseFloat(food.quantity);
-        if (!isNaN(existingNum) && !isNaN(newNum)) {
-          // Both numeric: sum them
-          foodMap.set(key, { name: existing.name, quantity: String(existingNum + newNum) });
+        if (!isNaN(existing.num) && !isNaN(parsed.num)) {
+          existing.num = existing.num + parsed.num;
         }
-        // If not numeric (e.g. "À vontade"), keep existing as-is
+        // If not numeric, keep as-is
       }
     }
 
     // Multiply numeric quantities by 7 (one week)
     const DAYS = 7;
     const weekFoods = Array.from(foodMap.values()).map(food => {
-      const num = parseFloat(food.quantity);
-      if (!isNaN(num)) {
-        // Round to avoid floating point noise (e.g. 350.0000001)
-        const weekQty = Math.round(num * DAYS * 10) / 10;
-        return { ...food, quantity: String(weekQty) };
+      if (!isNaN(food.num)) {
+        const weekQty = Math.round(food.num * DAYS * 10) / 10;
+        // Re-attach unit: "1050g", "7 porção", etc.
+        return { name: food.name, quantity: food.unit ? `${weekQty}${food.unit}` : String(weekQty) };
       }
-      return food; // non-numeric: keep as-is
+      // Non-numeric (e.g. "À vontade"): keep original
+      return { name: food.name, quantity: food.rawQty };
     });
 
     // Create shopping items from weekly totals
