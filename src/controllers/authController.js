@@ -107,13 +107,22 @@ exports.getRegister = (req, res) => {
  */
 exports.postRegister = async (req, res, next) => {
   try {
-    const { username, password, confirmPassword } = req.body;
+    const { username, password, confirmPassword, email } = req.body;
     const csrfToken = req.csrfToken ? req.csrfToken() : '';
 
-    if (!username || !password || !confirmPassword) {
+    if (!username || !password || !confirmPassword || !email) {
       return res.status(400).render('auth/register', {
         title: 'Criar Conta',
         error: 'Todos os campos são obrigatórios',
+        csrfToken,
+      });
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      return res.status(400).render('auth/register', {
+        title: 'Criar Conta',
+        error: 'Informe um e-mail válido',
         csrfToken,
       });
     }
@@ -147,10 +156,23 @@ exports.postRegister = async (req, res, next) => {
       });
     }
 
+    const safeEmail = email.trim().toLowerCase();
+    const emailExists = await global.db.query(
+      'SELECT id FROM "User" WHERE LOWER(email) = $1',
+      [safeEmail]
+    );
+    if (emailExists.rows.length > 0) {
+      return res.status(400).render('auth/register', {
+        title: 'Criar Conta',
+        error: 'Este e-mail já está em uso',
+        csrfToken,
+      });
+    }
+
     const hashedPassword = await bcrypt.hash(password, 12);
     const result = await global.db.query(
-      'INSERT INTO "User" (username, password, role) VALUES ($1, $2, $3) RETURNING id, username, role',
-      [username, hashedPassword, 'user']
+      'INSERT INTO "User" (username, password, role, email) VALUES ($1, $2, $3, $4) RETURNING id, username, role',
+      [username, hashedPassword, 'user', safeEmail]
     );
 
     const user = result.rows[0];

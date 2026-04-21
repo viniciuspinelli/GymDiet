@@ -55,12 +55,12 @@ exports.getCreateUser = (req, res) => {
 exports.postCreateUser = async (req, res, next) => {
   try {
     const { username, password, role, email } = req.body;
-    if (!username || !password) {
+    if (!username || !password || !email) {
       return res.render('admin/user-form', {
         title: 'Novo Usuário',
         csrfToken: req.csrfToken(),
         editUser: null,
-        error: 'Usuário e senha são obrigatórios',
+        error: 'Usuário, senha e e-mail são obrigatórios',
       });
     }
     const existing = await global.db.query(`SELECT id FROM "User" WHERE username = $1`, [username]);
