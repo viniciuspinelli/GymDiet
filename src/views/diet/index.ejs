@@ -153,13 +153,14 @@
                                     </div>
                                     <div class="form-group">
                                         <label>Unidade</label>
-                                        <select class="food-unit">
+                                        <select class="food-unit" onchange="onUnitChange(this)">
                                             <option value="g">g</option>
                                             <option value="ml">ml</option>
                                             <option value="un">un</option>
                                             <option value=" porção"> porção</option>
                                             <option value="">outro</option>
                                         </select>
+                                        <small class="unit-hint" style="display:none;color:#888;font-size:11px;">valores por 100g — ajuste manualmente</small>
                                     </div>
                                 </div>
                                 <div class="form-row">
@@ -783,7 +784,8 @@
         form.dataset.base100Fat      = el.dataset.fat;
 
         const qty = parseFloat(form.querySelector('.food-quantity').value) || 100;
-        applyNutritionForQty(form, qty);
+        const unit = form.querySelector('.food-unit').value;
+        applyNutritionForQty(form, qty, unit);
 
         dropdown.style.display = 'none';
         form.querySelector('.food-quantity').focus();
@@ -793,15 +795,37 @@
         const form = input.closest('form');
         if (!form.dataset.base100Calories) return; // no food selected yet
         const qty = parseFloat(input.value) || 0;
-        applyNutritionForQty(form, qty);
+        const unit = form.querySelector('.food-unit').value;
+        applyNutritionForQty(form, qty, unit);
     }
 
-    function applyNutritionForQty(form, qty) {
-        const factor = qty / 100;
-        form.querySelector('.food-calories').value = qty > 0 ? Math.round(form.dataset.base100Calories * factor) : '';
-        form.querySelector('.food-protein').value  = qty > 0 ? parseFloat((form.dataset.base100Protein  * factor).toFixed(1)) : '';
-        form.querySelector('.food-carbs').value    = qty > 0 ? parseFloat((form.dataset.base100Carbs    * factor).toFixed(1)) : '';
-        form.querySelector('.food-fat').value      = qty > 0 ? parseFloat((form.dataset.base100Fat      * factor).toFixed(1)) : '';
+    function onUnitChange(select) {
+        const form = select.closest('form');
+        if (!form.dataset.base100Calories) return; // no food selected yet
+        const qty = parseFloat(form.querySelector('.food-quantity').value) || 0;
+        applyNutritionForQty(form, qty, select.value);
+    }
+
+    function applyNutritionForQty(form, qty, unit) {
+        const scalable = unit === 'g' || unit === 'ml';
+        const hint = form.querySelector('.unit-hint');
+
+        if (scalable) {
+            // Scale linearly: API values are per 100g/ml
+            if (hint) hint.style.display = 'none';
+            const factor = qty / 100;
+            form.querySelector('.food-calories').value = qty > 0 ? Math.round(form.dataset.base100Calories * factor) : '';
+            form.querySelector('.food-protein').value  = qty > 0 ? parseFloat((form.dataset.base100Protein  * factor).toFixed(1)) : '';
+            form.querySelector('.food-carbs').value    = qty > 0 ? parseFloat((form.dataset.base100Carbs    * factor).toFixed(1)) : '';
+            form.querySelector('.food-fat').value      = qty > 0 ? parseFloat((form.dataset.base100Fat      * factor).toFixed(1)) : '';
+        } else {
+            // For un/porção/outro: fill with per-100g base and let admin adjust
+            if (hint) hint.style.display = 'block';
+            form.querySelector('.food-calories').value = form.dataset.base100Calories || '';
+            form.querySelector('.food-protein').value  = form.dataset.base100Protein  || '';
+            form.querySelector('.food-carbs').value    = form.dataset.base100Carbs    || '';
+            form.querySelector('.food-fat').value      = form.dataset.base100Fat      || '';
+        }
     }
 
     // Close dropdown when clicking outside
