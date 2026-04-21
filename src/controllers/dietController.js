@@ -476,9 +476,10 @@ async function searchUSDA(query) {
 }
 
 async function searchOpenFoodFacts(query) {
-  const url = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}&json=1&page_size=8&fields=product_name,nutriments`;
+  // Use Brazilian endpoint for better Portuguese results
+  const url = `https://br.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}&json=1&page_size=12&fields=product_name,nutriments`;
 
-  const response = await fetch(url, { signal: AbortSignal.timeout(6000) });
+  const response = await fetch(url, { signal: AbortSignal.timeout(7000) });
   if (!response.ok) return [];
 
   const data = await response.json();
@@ -510,24 +511,28 @@ exports.searchFood = async (req, res) => {
 
     const query = q.trim();
 
-    // Try USDA first
-    let results = [];
-    try {
-      results = await searchUSDA(query);
-    } catch (e) {
-      console.warn('USDA search failed:', e.message);
-    }
+    // Run both APIs in parallel for speed
+    const [usdaResult, offResult] = await Promise.allSettled([
+      searchUSDA(query),
+      searchOpenFoodFacts(query),
+    ]);
 
-    // Fallback to Open Food Facts
-    if (results.length === 0) {
-      try {
-        results = await searchOpenFoodFacts(query);
-      } catch (e) {
-        console.warn('Open Food Facts search failed:', e.message);
-      }
-    }
+    const usdaItems = usdaResult.status === 'fulfilled' ? usdaResult.value : [];
+    const offItems  = offResult.status  === 'fulfilled' ? offResult.value  : [];
 
-    res.json({ success: true, results: results.slice(0, 8) });
+    if (usdaResult.status === 'rejected') console.warn('USDA search failed:', usdaResult.reason?.message);
+    if (offResult.status  === 'rejected') console.warn('OFF search failed:',  offResult.reason?.message);
+
+    // Combine (USDA first), deduplicate by lowercase name
+    const seen = new Set();
+    const combined = [...usdaItems, ...offItems].filter(f => {
+      const key = f.name.toLowerCase().trim();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+
+    res.json({ success: true, results: combined.slice(0, 8) });
   } catch (error) {
     console.error('Error searching food:', error);
     res.json({ success: true, results: [] });
