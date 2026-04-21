@@ -22,6 +22,9 @@ router.delete('/users/:userId/diets/:planId', adminController.removeDiet);
 
 // Template library
 router.get('/templates', adminController.getTemplates);
+router.post('/templates/workouts', adminController.createWorkoutTemplate);
+router.post('/templates/diets', adminController.createDietTemplate);
+router.get('/templates/diets/:id/meals', adminController.getDietTemplateMeals);
 router.delete('/templates/workouts/:id', adminController.deleteWorkoutTemplate);
 router.delete('/templates/diets/:id', adminController.deleteDietTemplate);
 

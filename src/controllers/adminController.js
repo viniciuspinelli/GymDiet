@@ -224,6 +224,71 @@ exports.getTemplates = async (req, res, next) => {
   }
 };
 
+exports.createWorkoutTemplate = async (req, res, next) => {
+  try {
+    const { name, description, dayOfWeek } = req.body;
+    const userId = req.session.user.id;
+    if (!name || !name.trim()) {
+      return res.status(400).json({ success: false, message: 'Nome é obrigatório' });
+    }
+    const result = await global.db.query(
+      `INSERT INTO "WorkoutPlan" ("userId", name, description, "dayOfWeek", "isActive", "isTemplate")
+       VALUES ($1, $2, $3, $4, true, true)
+       RETURNING id, name, description, "dayOfWeek"`,
+      [userId, name.trim(), description?.trim() || null, dayOfWeek || null]
+    );
+    res.json({ success: true, plan: result.rows[0] });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.createDietTemplate = async (req, res, next) => {
+  try {
+    const { name } = req.body;
+    const userId = req.session.user.id;
+    if (!name || !name.trim()) {
+      return res.status(400).json({ success: false, message: 'Nome é obrigatório' });
+    }
+    const result = await global.db.query(
+      `INSERT INTO "MealPlan" ("userId", name, "isActive", "isTemplate", "createdAt")
+       VALUES ($1, $2, false, true, NOW())
+       RETURNING id, name`,
+      [userId, name.trim()]
+    );
+    res.json({ success: true, plan: result.rows[0] });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.getDietTemplateMeals = async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id);
+    const planCheck = await global.db.query(
+      `SELECT id FROM "MealPlan" WHERE id = $1 AND "isTemplate" = true`,
+      [id]
+    );
+    if (!planCheck.rows[0]) {
+      return res.status(404).json({ success: false, message: 'Template não encontrado' });
+    }
+    const mealsResult = await global.db.query(
+      `SELECT id, name, "time" FROM "Meal" WHERE "mealPlanId" = $1 ORDER BY "order" ASC, id ASC`,
+      [id]
+    );
+    const meals = await Promise.all(mealsResult.rows.map(async meal => {
+      const foodsResult = await global.db.query(
+        `SELECT id, name, quantity, calories, protein, carbs, fat FROM "MealFood" WHERE "mealId" = $1 ORDER BY "order" ASC, id ASC`,
+        [meal.id]
+      );
+      return { ...meal, foods: foodsResult.rows };
+    }));
+    res.json({ success: true, meals });
+  } catch (err) {
+    next(err);
+  }
+};
+
 exports.deleteWorkoutTemplate = async (req, res, next) => {
   try {
     const id = parseInt(req.params.id);
