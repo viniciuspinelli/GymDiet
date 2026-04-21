@@ -7,13 +7,16 @@
             <h1>Planos de Treino</h1>
             <p class="page-subtitle">Gerencie seus planos e exercicios</p>
         </div>
+        <% if (isAdmin) { %>
         <button class="btn btn-primary" id="btn-novo-plano" onclick="toggleCreatePanel()">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             Novo Plano
         </button>
+        <% } %>
     </div>
 
     <!-- Inline: Criar Plano -->
+    <% if (isAdmin) { %>
     <div class="inline-panel" id="panel-create">
         <div class="inline-panel-header">
             <span class="inline-panel-title">Novo Plano</span>
@@ -45,6 +48,7 @@
             </div>
         </form>
     </div>
+    <% } %>
 
     <!-- Lista de Planos -->
     <% if (plans.length > 0) { %>

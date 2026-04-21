@@ -16,7 +16,9 @@
                     </option>
                 <% }); %>
             </select>
+            <% if (typeof isAdmin !== 'undefined' && isAdmin) { %>
             <button class="btn btn-success" onclick="createNewPlan()">➕ Novo Plano</button>
+            <% } %>
             <% if (typeof isAdmin !== 'undefined' && isAdmin && activePlan && activePlan.id) { %>
             <button class="btn btn-secondary btn-sm" id="btn-toggle-template" 
                     onclick="toggleDietTemplate(<%= activePlan.id %>, this)"
