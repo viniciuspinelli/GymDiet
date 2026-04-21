@@ -3,19 +3,27 @@
  * Enables basic PWA capabilities
  */
 
-const CACHE_NAME = 'gymdiet-v1';
-const assets = [
-    '/',
+const CACHE_NAME = 'gymdiet-v2';
+const STATIC_ASSETS = [
     '/css/style.css',
     '/js/utils.js',
     '/manifest.json',
 ];
 
-// Install event - cache assets
+// Rotas autenticadas que nunca devem ser cacheadas
+const NO_CACHE_PREFIXES = [
+    '/workouts',
+    '/diet',
+    '/shopping',
+    '/admin',
+    '/auth',
+];
+
+// Install event - cache only static assets
 self.addEventListener('install', (event) => {
     event.waitUntil(
         caches.open(CACHE_NAME).then((cache) => {
-            return cache.addAll(assets).catch(() => {
+            return cache.addAll(STATIC_ASSETS).catch(() => {
                 // Don't fail if assets are not available
             });
         })
@@ -23,27 +31,30 @@ self.addEventListener('install', (event) => {
     self.skipWaiting();
 });
 
-// Fetch event - serve from cache, fallback to network
+// Fetch event - serve from cache only for safe static assets
 self.addEventListener('fetch', (event) => {
-    // Only cache GET requests
+    // Only handle GET requests
     if (event.request.method !== 'GET') {
         return;
     }
 
-    event.respondWith(
-        caches.open(CACHE_NAME).then((cache) => {
-            return cache.match(event.request).then((response) => {
-                // Return cached response or fetch from network
-                return response || fetch(event.request).then((response) => {
-                    // Cache successful responses
-                    if (response.ok) {
-                        cache.put(event.request, response.clone());
-                    }
-                    return response;
-                });
-            });
-        })
-    );
+    const url = new URL(event.request.url);
+
+    // Never cache authenticated or auth routes — always fetch from network
+    if (NO_CACHE_PREFIXES.some((prefix) => url.pathname.startsWith(prefix))) {
+        event.respondWith(fetch(event.request));
+        return;
+    }
+
+    // For known static assets: cache-first strategy
+    if (STATIC_ASSETS.includes(url.pathname)) {
+        event.respondWith(
+            caches.match(event.request).then((cached) => {
+                return cached || fetch(event.request);
+            })
+        );
+    }
+    // All other requests: network only (no caching)
 });
 
 // Activate event - clean up old caches

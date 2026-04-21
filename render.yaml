@@ -28,13 +28,13 @@ services:
         value: 3000
 
     # Build configuration (migrations run on app startup now)
-    buildCommand: npm install && npx prisma generate
+    buildCommand: npm install
 
     # Start command (will auto-run migrations and seed)
     startCommand: npm run start
 
     # Health endpoint (optional but recommended)
-    healthCheckPath: /
+    healthCheckPath: /health
 
     # Timeout for deployment
     buildFailureStrategy: cancel

@@ -50,10 +50,10 @@ router.post('/setup-admin', async (req, res) => {
       });
     }
 
-    if (password.length < 6) {
+    if (password.length < 8) {
       return res.status(400).json({
         sucesso: false,
-        erro: 'Senha deve ter pelo menos 6 caracteres'
+        erro: 'Senha deve ter pelo menos 8 caracteres'
       });
     }
 
@@ -78,7 +78,9 @@ router.post('/setup-admin', async (req, res) => {
       [username, hashedPassword]
     );
 
-    console.log('✅ Admin criado:', result.rows[0].username);
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('Admin criado:', result.rows[0].username);
+    }
 
     res.json({
       sucesso: true,

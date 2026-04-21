@@ -135,10 +135,10 @@ exports.postRegister = async (req, res, next) => {
       });
     }
 
-    if (password.length < 6) {
+    if (password.length < 8) {
       return res.status(400).render('auth/register', {
         title: 'Criar Conta',
-        error: 'A senha deve ter pelo menos 6 caracteres',
+        error: 'A senha deve ter pelo menos 8 caracteres',
         csrfToken,
       });
     }
@@ -203,6 +203,17 @@ exports.getLogout = (req, res, next) => {
       console.error('Session destroy error:', err);
       return next(err);
     }
+    res.redirect('/auth/login');
+  });
+};
+
+exports.postLogout = (req, res, next) => {
+  req.session.destroy((err) => {
+    if (err) {
+      console.error('Session destroy error:', err);
+      return next(err);
+    }
+    res.clearCookie('sid');
     res.redirect('/auth/login');
   });
 };

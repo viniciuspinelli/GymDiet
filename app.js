@@ -1,5 +1,6 @@
 require('dotenv').config();
 const express = require('express');
+const helmet = require('helmet');
 const session = require('express-session');
 const pgSession = require('connect-pg-simple')(session);
 const csrf = require('csurf');
@@ -20,10 +21,35 @@ const adminMiddleware = require('./src/middleware/adminMiddleware');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Trust proxy — Render termina TLS no balanceador (1 hop)
+app.set('trust proxy', 1);
+
+// Security headers
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com"],
+      connectSrc: ["'self'"],
+      frameSrc: ["'none'"],
+      objectSrc: ["'none'"],
+    },
+  },
+  hsts: {
+    maxAge: 31536000,
+    includeSubDomains: true,
+    preload: true,
+  },
+  referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+}));
+
 // Database Pool
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: true } : false
 });
 
 // Make pool globally available for routes
@@ -41,8 +67,11 @@ pool.query(`
 // MIDDLEWARE
 // ========================
 
-// Logger
-app.use(morgan('combined'));
+// Logger (reset-password redacted para evitar vazamento de tokens)
+app.use(morgan('combined', {
+  skip: (req) => req.path.startsWith('/auth/reset-password'),
+}));
+app.use('/auth/reset-password', morgan(':method /auth/reset-password/[REDACTED] :status :response-time ms'));
 
 // Body parsing
 app.use(express.urlencoded({ extended: false }));
@@ -51,6 +80,12 @@ app.use(express.json());
 // Static files
 app.use(express.static(path.join(__dirname, 'src', 'public')));
 
+// Falha imediata se SESSION_SECRET não estiver definida em produção
+if (process.env.NODE_ENV === 'production' && !process.env.SESSION_SECRET) {
+  console.error('FATAL: SESSION_SECRET não definida em produção');
+  process.exit(1);
+}
+
 // Session configuration
 app.use(
   session({
@@ -58,14 +93,17 @@ app.use(
       conString: process.env.DATABASE_URL,
       tableName: 'session',
       createTableIfMissing: true,
+      pruneSessionInterval: 60 * 15,
     }),
-    secret: process.env.SESSION_SECRET || 'dev-secret-key',
+    name: 'sid',
+    secret: process.env.SESSION_SECRET || 'dev-secret-only',
     resave: false,
     saveUninitialized: false,
     cookie: {
       secure: process.env.NODE_ENV === 'production',
       httpOnly: true,
-      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+      sameSite: 'strict',
+      maxAge: 8 * 60 * 60 * 1000, // 8 horas
     },
   })
 );
@@ -93,6 +131,11 @@ app.use((req, res, next) => {
 // ========================
 // ROUTES
 // ========================
+
+// Health check endpoint (sem auth, sem CSRF)
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok' });
+});
 
 // Setup route (NO CSRF protection - skip via error handling)
 app.use('/setup', setupRoutes);
