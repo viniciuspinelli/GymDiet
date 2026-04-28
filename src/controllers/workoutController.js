@@ -406,8 +406,8 @@ exports.createWorkoutPlan = async (req, res, next) => {
     const { name, description, dayOfWeek } = req.body;
     const userId = req.session.user.id;
 
-    if (req.session.user.role !== 'admin') {
-      return res.status(403).json({ success: false, message: 'Apenas administradores podem criar planos de treino.' });
+    if (req.session.user.role !== 'admin' && req.session.user.role !== 'instructor') {
+      return res.status(403).json({ success: false, message: 'Apenas administradores e instrutores podem criar planos de treino.' });
     }
 
     if (!name) {
