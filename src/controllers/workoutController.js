@@ -389,7 +389,7 @@ exports.getWorkoutPlans = async (req, res, next) => {
     res.render('workouts/plans', {
       title: 'Gerenciar Treinos',
       plans: result.rows,
-      isAdmin,
+      isAdmin: isAdmin || isInstructor,
       csrfToken: req.csrfToken(),
     });
   } catch (error) {
