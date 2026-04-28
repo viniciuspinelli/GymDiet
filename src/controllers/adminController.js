@@ -5,14 +5,29 @@ const bcrypt = require('bcrypt');
 // ========================
 exports.getDashboard = async (req, res, next) => {
   try {
-    const usersResult = await global.db.query(`SELECT COUNT(*) FROM "User" WHERE role = 'user'`);
+    const isAdmin = req.session.user.role === 'admin';
+    const currentUserId = req.session.user.id;
+
+    const usersResult = isAdmin
+      ? await global.db.query(`SELECT COUNT(*) FROM "User" WHERE role = 'user'`)
+      : await global.db.query(`SELECT COUNT(*) FROM "User" WHERE role = 'user' AND "instructorId" = $1`, [currentUserId]);
+
     const workoutTemplatesResult = await global.db.query(`SELECT COUNT(*) FROM "WorkoutPlan" WHERE "isTemplate" = true`);
     const dietTemplatesResult = await global.db.query(`SELECT COUNT(*) FROM "MealPlan" WHERE "isTemplate" = true`);
-    const sessionsResult = await global.db.query(`SELECT COUNT(*) FROM "WorkoutSession" WHERE "isCompleted" = true`);
+
+    const sessionsResult = isAdmin
+      ? await global.db.query(`SELECT COUNT(*) FROM "WorkoutSession" WHERE "isCompleted" = true`)
+      : await global.db.query(
+          `SELECT COUNT(*) FROM "WorkoutSession" ws
+           JOIN "User" u ON u.id = ws."userId"
+           WHERE ws."isCompleted" = true AND u."instructorId" = $1`,
+          [currentUserId]
+        );
 
     res.render('admin/dashboard', {
-      title: 'Painel Admin',
+      title: isAdmin ? 'Painel Admin' : 'Meus Alunos',
       csrfToken: req.csrfToken(),
+      isAdmin,
       stats: {
         users: parseInt(usersResult.rows[0].count),
         workoutTemplates: parseInt(workoutTemplatesResult.rows[0].count),
@@ -30,12 +45,28 @@ exports.getDashboard = async (req, res, next) => {
 // ========================
 exports.getUsers = async (req, res, next) => {
   try {
-    const result = await global.db.query(
-      `SELECT id, username, "fullName", role, "createdAt" FROM "User" ORDER BY "createdAt" DESC`
-    );
+    const isAdmin = req.session.user.role === 'admin';
+    const currentUserId = req.session.user.id;
+
+    const result = isAdmin
+      ? await global.db.query(
+          `SELECT u.id, u.username, u."fullName", u.role, u."createdAt",
+                  i.username AS "instructorUsername", i."fullName" AS "instructorFullName"
+           FROM "User" u
+           LEFT JOIN "User" i ON i.id = u."instructorId"
+           ORDER BY u."createdAt" DESC`
+        )
+      : await global.db.query(
+          `SELECT id, username, "fullName", role, "createdAt" FROM "User"
+           WHERE "instructorId" = $1
+           ORDER BY "createdAt" DESC`,
+          [currentUserId]
+        );
+
     res.render('admin/users', {
       title: 'Gerenciar Usuários',
       csrfToken: req.csrfToken(),
+      isAdmin,
       users: result.rows,
     });
   } catch (err) {
@@ -43,24 +74,40 @@ exports.getUsers = async (req, res, next) => {
   }
 };
 
-exports.getCreateUser = (req, res) => {
-  res.render('admin/user-form', {
-    title: 'Novo Usuário',
-    csrfToken: req.csrfToken(),
-    editUser: null,
-    error: null,
-  });
+exports.getCreateUser = async (req, res, next) => {
+  try {
+    const isAdmin = req.session.user.role === 'admin';
+    const instructors = isAdmin
+      ? (await global.db.query(`SELECT id, username, "fullName" FROM "User" WHERE role = 'instructor' ORDER BY username ASC`)).rows
+      : [];
+    res.render('admin/user-form', {
+      title: 'Novo Usuário',
+      csrfToken: req.csrfToken(),
+      editUser: null,
+      error: null,
+      isAdmin,
+      instructors,
+    });
+  } catch (err) {
+    next(err);
+  }
 };
 
 exports.postCreateUser = async (req, res, next) => {
   try {
-    const { username, fullName, password, role, email } = req.body;
+    const { username, fullName, password, role, email, instructorId } = req.body;
+    const isAdmin = req.session.user.role === 'admin';
+    const instructors = isAdmin
+      ? (await global.db.query(`SELECT id, username, "fullName" FROM "User" WHERE role = 'instructor' ORDER BY username ASC`)).rows
+      : [];
     if (!username || !password || !email) {
       return res.render('admin/user-form', {
         title: 'Novo Usuário',
         csrfToken: req.csrfToken(),
         editUser: null,
         error: 'Usuário, senha e e-mail são obrigatórios',
+        isAdmin,
+        instructors,
       });
     }
     const existing = await global.db.query(`SELECT id FROM "User" WHERE username = $1`, [username]);
@@ -70,15 +117,30 @@ exports.postCreateUser = async (req, res, next) => {
         csrfToken: req.csrfToken(),
         editUser: null,
         error: 'Nome de usuário já está em uso',
+        isAdmin,
+        instructors,
       });
     }
     const hashed = await bcrypt.hash(password, 12);
-    const safeRole = role === 'admin' ? 'admin' : 'user';
+    const isAdmin = req.session.user.role === 'admin';
+    let safeRole;
+    if (isAdmin) {
+      safeRole = ['admin', 'instructor', 'user'].includes(role) ? role : 'user';
+    } else {
+      safeRole = 'user';
+    }
     const safeEmail = email && email.trim() ? email.trim().toLowerCase() : null;
     const safeFullName = fullName && fullName.trim() ? fullName.trim() : null;
+    // instructorId: admin pode escolher; instructor auto-atribui a si mesmo
+    let safeInstructorId = null;
+    if (isAdmin && instructorId && parseInt(instructorId) > 0) {
+      safeInstructorId = parseInt(instructorId);
+    } else if (!isAdmin) {
+      safeInstructorId = req.session.user.id;
+    }
     await global.db.query(
-      `INSERT INTO "User" (username, "fullName", password, role, email) VALUES ($1, $2, $3, $4, $5)`,
-      [username, safeFullName, hashed, safeRole, safeEmail]
+      `INSERT INTO "User" (username, "fullName", password, role, email, "instructorId") VALUES ($1, $2, $3, $4, $5, $6)`,
+      [username, safeFullName, hashed, safeRole, safeEmail, safeInstructorId]
     );
     res.redirect('/admin/users');
   } catch (err) {
@@ -88,15 +150,26 @@ exports.postCreateUser = async (req, res, next) => {
 
 exports.getEditUser = async (req, res, next) => {
   try {
+    const isAdmin = req.session.user.role === 'admin';
+    const currentUserId = req.session.user.id;
     const result = await global.db.query(
-      `SELECT id, username, "fullName", role, email FROM "User" WHERE id = $1`, [req.params.id]
+      `SELECT id, username, "fullName", role, email, "instructorId" FROM "User" WHERE id = $1`, [req.params.id]
     );
     if (!result.rows[0]) return res.redirect('/admin/users');
+    // Instructor can only edit their own students
+    if (!isAdmin && result.rows[0].instructorId !== currentUserId) {
+      return res.redirect('/admin/users');
+    }
+    const instructors = isAdmin
+      ? (await global.db.query(`SELECT id, username, "fullName" FROM "User" WHERE role = 'instructor' ORDER BY username ASC`)).rows
+      : [];
     res.render('admin/user-form', {
       title: 'Editar Usuário',
       csrfToken: req.csrfToken(),
       editUser: result.rows[0],
       error: null,
+      isAdmin,
+      instructors,
     });
   } catch (err) {
     next(err);
@@ -105,34 +178,60 @@ exports.getEditUser = async (req, res, next) => {
 
 exports.postEditUser = async (req, res, next) => {
   try {
-    const { username, fullName, password, role, email } = req.body;
+    const { username, fullName, password, role, email, instructorId } = req.body;
     const userId = parseInt(req.params.id);
+    const isAdmin = req.session.user.role === 'admin';
+    const currentUserId = req.session.user.id;
+
+    // Instructor can only edit their own students
+    if (!isAdmin) {
+      const check = await global.db.query(`SELECT "instructorId" FROM "User" WHERE id = $1`, [userId]);
+      if (!check.rows[0] || check.rows[0].instructorId !== currentUserId) {
+        return res.redirect('/admin/users');
+      }
+    }
 
     // Prevent demoting yourself
-    if (userId === req.session.user.id && role !== 'admin') {
-      const result = await global.db.query(`SELECT id, username, "fullName", role, email FROM "User" WHERE id = $1`, [userId]);
+    if (userId === currentUserId && role !== 'admin') {
+      const result = await global.db.query(`SELECT id, username, "fullName", role, email, "instructorId" FROM "User" WHERE id = $1`, [userId]);
+      const instructors = isAdmin
+        ? (await global.db.query(`SELECT id, username, "fullName" FROM "User" WHERE role = 'instructor' ORDER BY username ASC`)).rows
+        : [];
       return res.render('admin/user-form', {
         title: 'Editar Usuário',
         csrfToken: req.csrfToken(),
         editUser: result.rows[0],
         error: 'Você não pode remover o seu próprio acesso de admin',
+        isAdmin,
+        instructors,
       });
     }
 
-    const safeRole = role === 'admin' ? 'admin' : 'user';
+    let safeRole;
+    if (isAdmin) {
+      safeRole = ['admin', 'instructor', 'user'].includes(role) ? role : 'user';
+    } else {
+      safeRole = 'user';
+    }
     const safeEmail = email && email.trim() ? email.trim().toLowerCase() : null;
     const safeFullName = fullName && fullName.trim() ? fullName.trim() : null;
+    let safeInstructorId = null;
+    if (isAdmin && instructorId && parseInt(instructorId) > 0) {
+      safeInstructorId = parseInt(instructorId);
+    } else if (!isAdmin) {
+      safeInstructorId = currentUserId;
+    }
 
     if (password && password.trim() !== '') {
       const hashed = await bcrypt.hash(password, 12);
       await global.db.query(
-        `UPDATE "User" SET username = $1, "fullName" = $2, password = $3, role = $4, email = $5 WHERE id = $6`,
-        [username, safeFullName, hashed, safeRole, safeEmail, userId]
+        `UPDATE "User" SET username = $1, "fullName" = $2, password = $3, role = $4, email = $5, "instructorId" = $6 WHERE id = $7`,
+        [username, safeFullName, hashed, safeRole, safeEmail, safeInstructorId, userId]
       );
     } else {
       await global.db.query(
-        `UPDATE "User" SET username = $1, "fullName" = $2, role = $3, email = $4 WHERE id = $5`,
-        [username, safeFullName, safeRole, safeEmail, userId]
+        `UPDATE "User" SET username = $1, "fullName" = $2, role = $3, email = $4, "instructorId" = $5 WHERE id = $6`,
+        [username, safeFullName, safeRole, safeEmail, safeInstructorId, userId]
       );
     }
     res.redirect('/admin/users');
@@ -144,8 +243,17 @@ exports.postEditUser = async (req, res, next) => {
 exports.deleteUser = async (req, res, next) => {
   try {
     const userId = parseInt(req.params.id);
-    if (userId === req.session.user.id) {
+    const isAdmin = req.session.user.role === 'admin';
+    const currentUserId = req.session.user.id;
+    if (userId === currentUserId) {
       return res.status(400).json({ success: false, message: 'Você não pode deletar sua própria conta' });
+    }
+    // Instructor can only delete their own students
+    if (!isAdmin) {
+      const check = await global.db.query(`SELECT "instructorId" FROM "User" WHERE id = $1`, [userId]);
+      if (!check.rows[0] || check.rows[0].instructorId !== currentUserId) {
+        return res.status(403).json({ success: false, message: 'Sem permissão' });
+      }
     }
     await global.db.query(`DELETE FROM "User" WHERE id = $1`, [userId]);
     res.json({ success: true });
@@ -157,9 +265,15 @@ exports.deleteUser = async (req, res, next) => {
 exports.getUserDetail = async (req, res, next) => {
   try {
     const userId = parseInt(req.params.id);
-    const userResult = await global.db.query(`SELECT id, username, "fullName", role FROM "User" WHERE id = $1`, [userId]);
+    const isAdmin = req.session.user.role === 'admin';
+    const currentUserId = req.session.user.id;
+    const userResult = await global.db.query(`SELECT id, username, "fullName", role, "instructorId" FROM "User" WHERE id = $1`, [userId]);
     if (!userResult.rows[0]) return res.redirect('/admin/users');
     const targetUser = userResult.rows[0];
+    // Instructor can only view their own students
+    if (!isAdmin && targetUser.instructorId !== currentUserId) {
+      return res.redirect('/admin/users');
+    }
 
     const workoutsResult = await global.db.query(
       `SELECT id, name, "isActive", "dayOfWeek" FROM "WorkoutPlan" WHERE "userId" = $1 AND "isTemplate" = false ORDER BY "order" ASC`,

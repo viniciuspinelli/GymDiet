@@ -2901,6 +2901,10 @@ tbody td {
     background: rgba(var(--primary-rgb, 99,102,241), 0.15);
     color: var(--primary);
 }
+.role-instructor {
+    background: rgba(255, 107, 0, 0.15);
+    color: #ff6b00;
+}
 .role-user {
     background: var(--bg-tertiary);
     color: var(--text-muted);

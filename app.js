@@ -72,6 +72,12 @@ pool.query(`
     ADD COLUMN IF NOT EXISTS "fullName" VARCHAR(255)
 `).catch(err => console.error('Migration error:', err.message));
 
+// Auto-migrate: add instructor support (role update + instructorId FK)
+pool.query(`
+  ALTER TABLE "User"
+    ADD COLUMN IF NOT EXISTS "instructorId" INTEGER REFERENCES "User"(id) ON DELETE SET NULL
+`).catch(err => console.error('Migration instructor error:', err.message));
+
 // ========================
 // MIDDLEWARE
 // ========================

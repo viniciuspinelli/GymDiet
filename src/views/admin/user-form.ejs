@@ -48,9 +48,26 @@
                 <label for="role">Nível de acesso</label>
                 <select id="role" name="role">
                     <option value="user" <%= !editUser || editUser.role === 'user' ? 'selected' : '' %>>👤 Aluno</option>
-                    <option value="admin" <%= editUser && editUser.role === 'admin' ? 'selected' : '' %>>⚡ Admin / Instrutor</option>
+                    <% if (isAdmin) { %>
+                    <option value="instructor" <%= editUser && editUser.role === 'instructor' ? 'selected' : '' %>>🎓 Instrutor</option>
+                    <option value="admin" <%= editUser && editUser.role === 'admin' ? 'selected' : '' %>>⚡ Admin</option>
+                    <% } %>
                 </select>
             </div>
+
+            <% if (isAdmin && instructors && instructors.length > 0) { %>
+            <div class="form-field">
+                <label for="instructorId">Instrutor responsável <span class="field-hint">(opcional)</span></label>
+                <select id="instructorId" name="instructorId">
+                    <option value="">-- Nenhum --</option>
+                    <% instructors.forEach(function(inst) { %>
+                    <option value="<%= inst.id %>" <%= editUser && editUser.instructorId === inst.id ? 'selected' : '' %>>
+                        <%= inst.fullName || inst.username %>
+                    </option>
+                    <% }); %>
+                </select>
+            </div>
+            <% } %>
 
             <div class="form-actions">
                 <a href="/admin/users" class="btn btn-secondary">Cancelar</a>

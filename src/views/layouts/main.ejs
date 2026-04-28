@@ -80,22 +80,24 @@
                             </a></li>
                         </ul>
                     </div>
-                    <% if (user.role === 'admin') { %>
+                    <% if (user.role === 'admin' || user.role === 'instructor') { %>
                     <div class="sidebar-section">
                         <span class="sidebar-label">ADMINISTRAÇÃO</span>
                         <ul>
-                            <li><a href="/admin" class="nav-link <%= title === 'Painel Admin' ? 'active' : '' %>">
+                            <li><a href="/admin" class="nav-link <%= title === 'Painel Admin' || title === 'Meus Alunos' ? 'active' : '' %>">
                                 <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
-                                Painel Admin
+                                <%= user.role === 'admin' ? 'Painel Admin' : 'Meu Painel' %>
                             </a></li>
                             <li><a href="/admin/users" class="nav-link <%= title === 'Gerenciar Usuários' ? 'active' : '' %>">
                                 <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-                                Alunos
+                                <%= user.role === 'admin' ? 'Alunos' : 'Meus Alunos' %>
                             </a></li>
+                            <% if (user.role === 'admin') { %>
                             <li><a href="/admin/templates" class="nav-link <%= title === 'Biblioteca de Planos' ? 'active' : '' %>">
                                 <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
                                 Biblioteca
                             </a></li>
+                            <% } %>
                         </ul>
                     </div>
                     <% } %>
