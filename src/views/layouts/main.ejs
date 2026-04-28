@@ -134,7 +134,7 @@
                     <span>🛒</span>
                     <span>Compras</span>
                 </a>
-                <% if (user.role === 'admin') { %>
+                <% if (user.role === 'admin' || user.role === 'instructor') { %>
                 <a href="/workouts/plans" class="nav-tab <%= title === 'Gerenciar Treinos' ? 'active' : '' %>">
                     <span>📋</span>
                     <span>Planos</span>
@@ -144,10 +144,10 @@
                     <span>📊</span>
                     <span>Histórico</span>
                 </a>
-                <% if (user.role === 'admin') { %>
-                <a href="/admin" class="nav-tab <%= title === 'Painel Admin' ? 'active' : '' %>">
+                <% if (user.role === 'admin' || user.role === 'instructor') { %>
+                <a href="/admin" class="nav-tab <%= title === 'Painel Admin' || title === 'Meus Alunos' ? 'active' : '' %>">
                     <span>⚡</span>
-                    <span>Admin</span>
+                    <span><%= user.role === 'admin' ? 'Admin' : 'Painel' %></span>
                 </a>
                 <% } %>
             </nav>
