@@ -12,8 +12,12 @@ exports.getDashboard = async (req, res, next) => {
       ? await global.db.query(`SELECT COUNT(*) FROM "User" WHERE role = 'user'`)
       : await global.db.query(`SELECT COUNT(*) FROM "User" WHERE role = 'user' AND "instructorId" = $1`, [currentUserId]);
 
-    const workoutTemplatesResult = await global.db.query(`SELECT COUNT(*) FROM "WorkoutPlan" WHERE "isTemplate" = true`);
-    const dietTemplatesResult = await global.db.query(`SELECT COUNT(*) FROM "MealPlan" WHERE "isTemplate" = true`);
+    const workoutTemplatesResult = isAdmin
+      ? await global.db.query(`SELECT COUNT(*) FROM "WorkoutPlan" WHERE "isTemplate" = true`)
+      : await global.db.query(`SELECT COUNT(*) FROM "WorkoutPlan" WHERE "isTemplate" = true AND "userId" = $1`, [currentUserId]);
+    const dietTemplatesResult = isAdmin
+      ? await global.db.query(`SELECT COUNT(*) FROM "MealPlan" WHERE "isTemplate" = true`)
+      : await global.db.query(`SELECT COUNT(*) FROM "MealPlan" WHERE "isTemplate" = true AND "userId" = $1`, [currentUserId]);
 
     const sessionsResult = isAdmin
       ? await global.db.query(`SELECT COUNT(*) FROM "WorkoutSession" WHERE "isCompleted" = true`)
@@ -283,12 +287,12 @@ exports.getUserDetail = async (req, res, next) => {
       [userId]
     );
 
-    const workoutTemplatesResult = await global.db.query(
-      `SELECT id, name, "dayOfWeek" FROM "WorkoutPlan" WHERE "isTemplate" = true ORDER BY name ASC`
-    );
-    const dietTemplatesResult = await global.db.query(
-      `SELECT id, name FROM "MealPlan" WHERE "isTemplate" = true ORDER BY name ASC`
-    );
+    const workoutTemplatesResult = isAdmin
+      ? await global.db.query(`SELECT id, name, "dayOfWeek" FROM "WorkoutPlan" WHERE "isTemplate" = true ORDER BY name ASC`)
+      : await global.db.query(`SELECT id, name, "dayOfWeek" FROM "WorkoutPlan" WHERE "isTemplate" = true AND "userId" = $1 ORDER BY name ASC`, [currentUserId]);
+    const dietTemplatesResult = isAdmin
+      ? await global.db.query(`SELECT id, name FROM "MealPlan" WHERE "isTemplate" = true ORDER BY name ASC`)
+      : await global.db.query(`SELECT id, name FROM "MealPlan" WHERE "isTemplate" = true AND "userId" = $1 ORDER BY name ASC`, [currentUserId]);
 
     res.render('admin/user-detail', {
       title: `Usuário: ${targetUser.username}`,
@@ -309,24 +313,50 @@ exports.getUserDetail = async (req, res, next) => {
 // ========================
 exports.getTemplates = async (req, res, next) => {
   try {
-    const workoutsResult = await global.db.query(
-      `SELECT wp.id, wp.name, wp.description, wp."dayOfWeek",
-              COUNT(e.id) AS exercise_count
-       FROM "WorkoutPlan" wp
-       LEFT JOIN "Exercise" e ON e."workoutPlanId" = wp.id
-       WHERE wp."isTemplate" = true
-       GROUP BY wp.id
-       ORDER BY wp.name ASC`
-    );
-    const dietsResult = await global.db.query(
-      `SELECT mp.id, mp.name,
-              COUNT(m.id) AS meal_count
-       FROM "MealPlan" mp
-       LEFT JOIN "Meal" m ON m."mealPlanId" = mp.id
-       WHERE mp."isTemplate" = true
-       GROUP BY mp.id
-       ORDER BY mp.name ASC`
-    );
+    const isAdmin = req.session.user.role === 'admin';
+    const currentUserId = req.session.user.id;
+
+    const workoutsResult = isAdmin
+      ? await global.db.query(
+          `SELECT wp.id, wp.name, wp.description, wp."dayOfWeek",
+                  COUNT(e.id) AS exercise_count
+           FROM "WorkoutPlan" wp
+           LEFT JOIN "Exercise" e ON e."workoutPlanId" = wp.id
+           WHERE wp."isTemplate" = true
+           GROUP BY wp.id
+           ORDER BY wp.name ASC`
+        )
+      : await global.db.query(
+          `SELECT wp.id, wp.name, wp.description, wp."dayOfWeek",
+                  COUNT(e.id) AS exercise_count
+           FROM "WorkoutPlan" wp
+           LEFT JOIN "Exercise" e ON e."workoutPlanId" = wp.id
+           WHERE wp."isTemplate" = true AND wp."userId" = $1
+           GROUP BY wp.id
+           ORDER BY wp.name ASC`,
+          [currentUserId]
+        );
+
+    const dietsResult = isAdmin
+      ? await global.db.query(
+          `SELECT mp.id, mp.name,
+                  COUNT(m.id) AS meal_count
+           FROM "MealPlan" mp
+           LEFT JOIN "Meal" m ON m."mealPlanId" = mp.id
+           WHERE mp."isTemplate" = true
+           GROUP BY mp.id
+           ORDER BY mp.name ASC`
+        )
+      : await global.db.query(
+          `SELECT mp.id, mp.name,
+                  COUNT(m.id) AS meal_count
+           FROM "MealPlan" mp
+           LEFT JOIN "Meal" m ON m."mealPlanId" = mp.id
+           WHERE mp."isTemplate" = true AND mp."userId" = $1
+           GROUP BY mp.id
+           ORDER BY mp.name ASC`,
+          [currentUserId]
+        );
 
     res.render('admin/templates', {
       title: 'Biblioteca de Planos',
@@ -407,6 +437,15 @@ exports.getDietTemplateMeals = async (req, res, next) => {
 exports.deleteWorkoutTemplate = async (req, res, next) => {
   try {
     const id = parseInt(req.params.id);
+    const isAdmin = req.session.user.role === 'admin';
+    if (!isAdmin) {
+      const owner = await global.db.query(
+        `SELECT "userId" FROM "WorkoutPlan" WHERE id = $1 AND "isTemplate" = true`, [id]
+      );
+      if (!owner.rows[0] || owner.rows[0].userId !== req.session.user.id) {
+        return res.status(403).json({ success: false, message: 'Acesso negado' });
+      }
+    }
     await global.db.query(
       `DELETE FROM "WorkoutSession" WHERE "workoutPlanId" = $1`, [id]
     );
@@ -424,9 +463,19 @@ exports.deleteWorkoutTemplate = async (req, res, next) => {
 
 exports.deleteDietTemplate = async (req, res, next) => {
   try {
+    const id = parseInt(req.params.id);
+    const isAdmin = req.session.user.role === 'admin';
+    if (!isAdmin) {
+      const owner = await global.db.query(
+        `SELECT "userId" FROM "MealPlan" WHERE id = $1 AND "isTemplate" = true`, [id]
+      );
+      if (!owner.rows[0] || owner.rows[0].userId !== req.session.user.id) {
+        return res.status(403).json({ success: false, message: 'Acesso negado' });
+      }
+    }
     await global.db.query(
       `DELETE FROM "MealPlan" WHERE id = $1 AND "isTemplate" = true`,
-      [parseInt(req.params.id)]
+      [id]
     );
     res.json({ success: true });
   } catch (err) {
