@@ -16,6 +16,7 @@ const workoutRoutes = require('./src/routes/workouts');
 const dietRoutes = require('./src/routes/diet');
 const shoppingRoutes = require('./src/routes/shopping');
 const adminRoutes = require('./src/routes/admin');
+const profileRoutes = require('./src/routes/profile');
 const authMiddleware = require('./src/middleware/authMiddleware');
 const adminMiddleware = require('./src/middleware/adminMiddleware');
 
@@ -210,6 +211,7 @@ app.use('/workouts', authMiddleware, workoutRoutes);
 app.use('/diet', authMiddleware, dietRoutes);
 app.use('/shopping', authMiddleware, shoppingRoutes);
 app.use('/admin', authMiddleware, adminMiddleware, adminRoutes);
+app.use('/profile', authMiddleware, profileRoutes);
 
 // ========================
 // ERROR HANDLING

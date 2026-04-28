@@ -28,8 +28,10 @@
                 <div class="header-actions">
                     <% if (user) { %>
                         <div class="user-badge">
-                            <span class="user-avatar"><%= user.username.charAt(0).toUpperCase() %></span>
-                            <span class="user-name"><%= user.username %></span>
+                            <a href="/profile" style="display:flex;align-items:center;gap:6px;text-decoration:none;color:inherit;">
+                                <span class="user-avatar"><%= user.username.charAt(0).toUpperCase() %></span>
+                                <span class="user-name"><%= user.username %></span>
+                            </a>
                         </div>
                         <form action="/auth/logout" method="POST" style="display:inline">
                             <input type="hidden" name="_csrf" value="<%= csrfToken %>">
@@ -99,6 +101,15 @@
                         </ul>
                     </div>
                     <% } %>
+                    <div class="sidebar-section">
+                        <span class="sidebar-label">CONTA</span>
+                        <ul>
+                            <li><a href="/profile" class="nav-link <%= title === 'Meu Perfil' ? 'active' : '' %>">
+                                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                                Meu Perfil
+                            </a></li>
+                        </ul>
+                    </div>
                 </nav>
             <% } %>
 
