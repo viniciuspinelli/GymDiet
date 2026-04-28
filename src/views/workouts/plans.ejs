@@ -24,19 +24,9 @@
         </div>
         <form onsubmit="submitCreate(event)" class="inline-panel-form">
             <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-            <div class="form-row">
-                <div class="form-group">
-                    <label>Nome *</label>
-                    <input type="text" id="c-name" name="name" placeholder="ex: Peito e Costas" required>
-                </div>
-                <div class="form-group">
-                    <label>Dia</label>
-                    <select id="c-day" name="dayOfWeek">
-                        <option value="">Nenhum</option>
-                        <option>Segunda</option><option>Terca</option><option>Quarta</option>
-                        <option>Quinta</option><option>Sexta</option><option>Sabado</option><option>Domingo</option>
-                    </select>
-                </div>
+            <div class="form-group">
+                <label>Nome *</label>
+                <input type="text" id="c-name" name="name" placeholder="ex: Peito e Costas" required>
             </div>
             <div class="form-group">
                 <label>Descricao</label>
@@ -183,7 +173,7 @@ async function submitCreate(e) {
         const r = await fetch('/workouts/plans', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': _csrf },
-            body: JSON.stringify({ name: fd.get('name'), description: fd.get('description') || null, dayOfWeek: fd.get('dayOfWeek') || null })
+            body: JSON.stringify({ name: fd.get('name'), description: fd.get('description') || null })
         });
         const d = await r.json();
         if (d.success) { toast('Plano criado!', 'success'); setTimeout(() => location.reload(), 1200); }
