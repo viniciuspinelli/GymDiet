@@ -363,8 +363,9 @@ exports.getWorkoutPlans = async (req, res, next) => {
   try {
     const userId = req.session.user.id;
     const isAdmin = req.session.user.role === 'admin';
+    const isInstructor = req.session.user.role === 'instructor';
 
-    if (!isAdmin) {
+    if (!isAdmin && !isInstructor) {
       return res.redirect('/workouts');
     }
 
