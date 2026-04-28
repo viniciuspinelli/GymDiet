@@ -122,7 +122,6 @@ exports.postCreateUser = async (req, res, next) => {
       });
     }
     const hashed = await bcrypt.hash(password, 12);
-    const isAdmin = req.session.user.role === 'admin';
     let safeRole;
     if (isAdmin) {
       safeRole = ['admin', 'instructor', 'user'].includes(role) ? role : 'user';
