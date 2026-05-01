@@ -38,6 +38,7 @@ app.use(helmet({
     directives: {
       defaultSrc: ["'self'"],
       scriptSrc: ["'self'", (req, res) => `'nonce-${res.locals.nonce}'`],
+      // TODO: remover 'unsafe-inline' abaixo quando os onclick/onsubmit inline das views forem migrados para JS externo
       scriptSrcAttr: ["'unsafe-inline'"],
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       imgSrc: ["'self'", "data:"],
@@ -234,7 +235,13 @@ app.use((err, req, res, next) => {
   }
 
   const status = err.status || err.statusCode || 500;
-  const message = err.message || 'Erro interno do servidor';
+  const isProduction = process.env.NODE_ENV === 'production';
+
+  // In production, hide internal details from 5xx errors to prevent
+  // information leakage (table names, column names, stack traces).
+  const message = isProduction && status >= 500
+    ? 'Erro interno do servidor'
+    : (err.message || 'Erro interno do servidor');
 
   console.error(`[${new Date().toISOString()}] Error:`, err);
 
@@ -250,7 +257,7 @@ app.use((err, req, res, next) => {
   res.status(status).render('error', {
     title: 'Erro',
     message,
-    error: process.env.NODE_ENV === 'development' ? err : {},
+    error: isProduction ? {} : err,
   });
 });
 
@@ -300,9 +307,8 @@ async function initializeDatabase() {
 
     // Migration: add role column to User
     await client.query(`ALTER TABLE "User" ADD COLUMN IF NOT EXISTS role VARCHAR(20) DEFAULT 'user';`);
-
-    // Migration: set vinicius as admin
-    await client.query(`UPDATE "User" SET role = 'admin' WHERE username = 'vinicius';`);
+    // NOTE: Privilege elevation via hardcoded username was removed (security fix).
+    // The first admin is created through /setup on first run.
 
     await client.query(`
       CREATE TABLE IF NOT EXISTS "Exercise" (

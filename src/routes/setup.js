@@ -43,6 +43,14 @@ router.post('/setup-admin', async (req, res) => {
       });
     }
 
+    // Validate username format (same rules as authController)
+    if (username.length < 3 || username.length > 30) {
+      return res.status(400).json({ sucesso: false, erro: 'O nome de usuário deve ter entre 3 e 30 caracteres' });
+    }
+    if (!/^[a-zA-Z0-9_.-]+$/.test(username)) {
+      return res.status(400).json({ sucesso: false, erro: 'O nome de usuário só pode conter letras, números, _, . e -' });
+    }
+
     if (password !== confirmPassword) {
       return res.status(400).json({
         sucesso: false,
@@ -69,13 +77,16 @@ router.post('/setup-admin', async (req, res) => {
       });
     }
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
+    // Hash password — cost factor 12 (consistent with authController)
+    const hashedPassword = await bcrypt.hash(password, 12);
+
+    // Normalize username to lowercase (consistent with authController)
+    const safeUsername = username.trim().toLowerCase();
 
     // Create user
     const result = await global.db.query(
       'INSERT INTO "User" (username, password) VALUES ($1, $2) RETURNING id, username',
-      [username, hashedPassword]
+      [safeUsername, hashedPassword]
     );
 
     if (process.env.NODE_ENV !== 'production') {

@@ -114,7 +114,20 @@ exports.postCreateUser = async (req, res, next) => {
         instructors,
       });
     }
-    const existing = await global.db.query(`SELECT id FROM "User" WHERE username = $1`, [username]);
+
+    if (username.length < 3 || username.length > 30 || !/^[a-zA-Z0-9_.-]+$/.test(username)) {
+      return res.render('admin/user-form', {
+        title: 'Novo Usuário',
+        csrfToken: req.csrfToken(),
+        editUser: null,
+        error: 'Nome de usuário inválido (3-30 chars, apenas letras, números, _, . e -)',
+        isAdmin,
+        instructors,
+      });
+    }
+    const safeUsername = username.trim().toLowerCase();
+
+    const existing = await global.db.query(`SELECT id FROM "User" WHERE LOWER(username) = $1`, [safeUsername]);
     if (existing.rows.length > 0) {
       return res.render('admin/user-form', {
         title: 'Novo Usuário',
@@ -143,7 +156,7 @@ exports.postCreateUser = async (req, res, next) => {
     }
     await global.db.query(
       `INSERT INTO "User" (username, "fullName", password, role, email, "instructorId") VALUES ($1, $2, $3, $4, $5, $6)`,
-      [username, safeFullName, hashed, safeRole, safeEmail, safeInstructorId]
+      [safeUsername, safeFullName, hashed, safeRole, safeEmail, safeInstructorId]
     );
     res.redirect('/admin/users');
   } catch (err) {
@@ -225,16 +238,18 @@ exports.postEditUser = async (req, res, next) => {
       safeInstructorId = currentUserId;
     }
 
+    const safeUsername = username.trim().toLowerCase();
+
     if (password && password.trim() !== '') {
       const hashed = await bcrypt.hash(password, 12);
       await global.db.query(
         `UPDATE "User" SET username = $1, "fullName" = $2, password = $3, role = $4, email = $5, "instructorId" = $6 WHERE id = $7`,
-        [username, safeFullName, hashed, safeRole, safeEmail, safeInstructorId, userId]
+        [safeUsername, safeFullName, hashed, safeRole, safeEmail, safeInstructorId, userId]
       );
     } else {
       await global.db.query(
         `UPDATE "User" SET username = $1, "fullName" = $2, role = $3, email = $4, "instructorId" = $5 WHERE id = $6`,
-        [username, safeFullName, safeRole, safeEmail, safeInstructorId, userId]
+        [safeUsername, safeFullName, safeRole, safeEmail, safeInstructorId, userId]
       );
     }
     res.redirect('/admin/users');

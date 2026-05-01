@@ -36,9 +36,9 @@ exports.postLogin = async (req, res, next) => {
       });
     }
 
-    // Find user by username
+    // Find user by username (case-insensitive)
     const result = await global.db.query(
-      'SELECT id, username, password, role FROM "User" WHERE username = $1',
+      'SELECT id, username, password, role FROM "User" WHERE LOWER(username) = LOWER($1)',
       [username]
     );
 
@@ -65,22 +65,32 @@ exports.postLogin = async (req, res, next) => {
       });
     }
 
-    // Create session
-    req.session.user = {
+    // Regenerate session ID to prevent session fixation attacks
+    const userData = {
       id: user.id,
       username: user.username,
       role: user.role || 'user',
     };
 
-    req.session.save((err) => {
-      if (err) {
-        console.error('Session save error:', err);
+    req.session.regenerate((regenErr) => {
+      if (regenErr) {
+        console.error('Session regenerate error:', regenErr);
         return res.status(500).render('error', {
           title: 'Erro',
           message: 'Erro ao criar sessão',
         });
       }
-      res.redirect('/workouts');
+      req.session.user = userData;
+      req.session.save((err) => {
+        if (err) {
+          console.error('Session save error:', err);
+          return res.status(500).render('error', {
+            title: 'Erro',
+            message: 'Erro ao criar sessão',
+          });
+        }
+        res.redirect('/workouts');
+      });
     });
   } catch (error) {
     console.error('Login error:', error);
@@ -118,6 +128,23 @@ exports.postRegister = async (req, res, next) => {
       });
     }
 
+    // Validate username length and format
+    if (username.length < 3 || username.length > 30) {
+      return res.status(400).render('auth/register', {
+        title: 'Criar Conta',
+        error: 'O nome de usuário deve ter entre 3 e 30 caracteres',
+        csrfToken,
+      });
+    }
+
+    if (!/^[a-zA-Z0-9_.-]+$/.test(username)) {
+      return res.status(400).render('auth/register', {
+        title: 'Criar Conta',
+        error: 'O nome de usuário só pode conter letras, números, _, . e -',
+        csrfToken,
+      });
+    }
+
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email.trim())) {
       return res.status(400).render('auth/register', {
@@ -143,9 +170,11 @@ exports.postRegister = async (req, res, next) => {
       });
     }
 
+    const safeUsername = username.trim().toLowerCase();
+
     const existing = await global.db.query(
-      'SELECT id FROM "User" WHERE username = $1',
-      [username]
+      'SELECT id FROM "User" WHERE LOWER(username) = $1',
+      [safeUsername]
     );
 
     if (existing.rows.length > 0) {
@@ -172,21 +201,33 @@ exports.postRegister = async (req, res, next) => {
     const hashedPassword = await bcrypt.hash(password, 12);
     const result = await global.db.query(
       'INSERT INTO "User" (username, password, role, email) VALUES ($1, $2, $3, $4) RETURNING id, username, role',
-      [username, hashedPassword, 'user', safeEmail]
+      [safeUsername, hashedPassword, 'user', safeEmail]
     );
 
     const user = result.rows[0];
-    req.session.user = { id: user.id, username: user.username, role: user.role };
 
-    req.session.save((err) => {
-      if (err) {
-        console.error('Session save error:', err);
+    // Regenerate session ID to prevent session fixation attacks
+    const userData = { id: user.id, username: user.username, role: user.role };
+
+    req.session.regenerate((regenErr) => {
+      if (regenErr) {
+        console.error('Session regenerate error:', regenErr);
         return res.status(500).render('error', {
           title: 'Erro',
           message: 'Erro ao criar sessão',
         });
       }
-      res.redirect('/workouts');
+      req.session.user = userData;
+      req.session.save((err) => {
+        if (err) {
+          console.error('Session save error:', err);
+          return res.status(500).render('error', {
+            title: 'Erro',
+            message: 'Erro ao criar sessão',
+          });
+        }
+        res.redirect('/workouts');
+      });
     });
   } catch (error) {
     console.error('Register error:', error);
@@ -378,12 +419,12 @@ exports.postResetPassword = async (req, res, next) => {
       });
     }
 
-    if (!password || password.length < 6) {
+    if (!password || password.length < 8) {
       return res.render('auth/reset-password', {
         title: 'Redefinir Senha',
         csrfToken,
         token: req.params.token,
-        error: 'A senha deve ter pelo menos 6 caracteres.',
+        error: 'A senha deve ter pelo menos 8 caracteres.',
         success: null,
       });
     }
@@ -402,6 +443,12 @@ exports.postResetPassword = async (req, res, next) => {
     await global.db.query(
       `UPDATE "User" SET password = $1, "resetPasswordToken" = NULL, "resetPasswordExpiry" = NULL WHERE id = $2`,
       [hashed, result.rows[0].id]
+    );
+
+    // Invalidate all active sessions for this user to protect against account takeover
+    await global.db.query(
+      `DELETE FROM session WHERE sess::jsonb -> 'user' ->> 'id' = $1::text`,
+      [String(result.rows[0].id)]
     );
 
     res.render('auth/reset-password', {

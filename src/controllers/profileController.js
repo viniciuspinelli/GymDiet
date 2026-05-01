@@ -85,6 +85,12 @@ exports.postProfile = async (req, res, next) => {
         `UPDATE "User" SET email = $1, "fullName" = $2, password = $3 WHERE id = $4`,
         [safeEmail, safeFullName, hashedPassword, userId]
       );
+      // Invalidate all OTHER active sessions (keeps the current one alive)
+      // so compromised sessions on other devices are revoked immediately.
+      await global.db.query(
+        `DELETE FROM session WHERE sid != $1 AND sess::jsonb -> 'user' ->> 'id' = $2::text`,
+        [req.sessionID, String(userId)]
+      );
     } else {
       await global.db.query(
         `UPDATE "User" SET email = $1, "fullName" = $2 WHERE id = $3`,

@@ -1,5 +1,6 @@
 const express = require('express');
 const dietController = require('../controllers/dietController');
+const { foodSearchLimiter } = require('../middleware/rateLimiter');
 
 const router = express.Router();
 
@@ -30,7 +31,7 @@ router.delete('/foods/:foodId', dietController.deleteFood);
 // PATCH /diet/plans/:planId/toggle-template - toggle template flag (admin)
 router.patch('/plans/:planId/toggle-template', dietController.toggleTemplate);
 
-// GET /diet/food-search - search food nutrition (admin only)
-router.get('/food-search', dietController.searchFood);
+// GET /diet/food-search - search food nutrition (admin only, rate limited)
+router.get('/food-search', foodSearchLimiter, dietController.searchFood);
 
 module.exports = router;
